@@ -64,15 +64,6 @@ def sure(message, default):
             else False
 
 
-def verify_decorator(func):
-    def wrapper(*args, **kwargs):
-        if User(kwargs['bduss']).verify():
-            return func(*args, **kwargs)
-        else:
-            raise InvalidBDUSSException('BDUSS is invalid')
-    return wrapper
-
-
 def delete_all():
     is_continue = sure('Are you sure delete all accounts in the database? y/N:', False)
     if not is_continue:
@@ -195,12 +186,16 @@ def cmd():
     try:
 
         if arguments['new']:
-            new_f = verify_decorator(new) if not arguments['--without-verifying'] else new
-            new_f(name=arguments['<user>'], bduss=arguments['<bduss>'])
+            if not arguments['--without-verifying']:
+                if not User(arguments['<bduss>']).verify():
+                    raise InvalidBDUSSException
+            new(name=arguments['<user>'], bduss=arguments['<bduss>'])
             update(name=arguments['<user>'])
         elif arguments['set']:
-            modify_f = verify_decorator(modify) if not arguments['--without-verifying'] else modify
-            modify_f(name=arguments['<user>'], bduss=arguments['<bduss>'])
+            if not arguments['--without-verifying']:
+                if not User(arguments['<bduss>']).verify():
+                    raise InvalidBDUSSException
+            modify(name=arguments['<user>'], bduss=arguments['<bduss>'])
             print('ok')
         elif arguments['delete']:
             if arguments['<user>'] is None:
@@ -231,3 +226,6 @@ def cmd():
         print(e)
 
     db.close()
+
+if __name__ == '__main__':
+    cmd()
