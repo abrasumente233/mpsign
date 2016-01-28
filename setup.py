@@ -1,9 +1,18 @@
 #!/usr/bin/env python
+import os
 from setuptools import setup, find_packages
+
+if os.environ.get('CONVERT_README'):
+    import pypandoc
+
+    long_desc = pypandoc.convert('README.md', 'rst')
+else:
+    long_desc = ''
 
 setup(name='mpsign',
       version='1.1',
       description='a tool which signs your bars on Baidu Tieba',
+      long_description=long_desc,
       classifiers=[
           'Development Status :: 4 - Beta',
           'License :: OSI Approved :: MIT License',
