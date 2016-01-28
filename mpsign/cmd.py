@@ -64,10 +64,6 @@ def sure(message, default):
             else False
 
 
-def new(*, name, bduss):
-    user_table.insert({'name': name, 'bduss': bduss, 'exp': 0})
-
-
 def verify_decorator(func):
     def wrapper(*args, **kwargs):
         if User(kwargs['bduss']).verify():
@@ -75,11 +71,6 @@ def verify_decorator(func):
         else:
             raise InvalidBDUSSException('BDUSS is invalid')
     return wrapper
-
-
-@check_user
-def modify(*, name, bduss):
-    user_table.update({'bduss': bduss}, where('name') == name)
 
 
 def delete_all():
@@ -187,6 +178,15 @@ def info(*, name=None):
                                               valid=User(user_info['bduss']).verify()))
 
 
+def new(*, name, bduss):
+    user_table.insert({'name': name, 'bduss': bduss, 'exp': 0})
+
+
+@check_user
+def modify(*, name, bduss):
+    user_table.update({'bduss': bduss}, where('name') == name)
+
+
 def cmd():
     arguments = docopt(__doc__, version=__version__)
     if arguments['--delay'] is None:
@@ -195,14 +195,12 @@ def cmd():
     try:
 
         if arguments['new']:
-            if not arguments['--without-verifying']:
-                new = verify_decorator(new)
-            new(name=arguments['<user>'], bduss=arguments['<bduss>'])
+            new_f = verify_decorator(new) if not arguments['--without-verifying'] else new
+            new_f(name=arguments['<user>'], bduss=arguments['<bduss>'])
             update(name=arguments['<user>'])
         elif arguments['set']:
-            if not arguments['--without-verifying']:
-                modify = verify_decorator(modify)
-            modify(name=arguments['<user>'], bduss=arguments['<bduss>'])
+            modify_f = verify_decorator(modify) if not arguments['--without-verifying'] else modify
+            modify_f(name=arguments['<user>'], bduss=arguments['<bduss>'])
             print('ok')
         elif arguments['delete']:
             if arguments['<user>'] is None:

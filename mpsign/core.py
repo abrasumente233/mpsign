@@ -18,7 +18,7 @@ class User:
         self._bars = []
 
     def sign(self, bar):
-        bar.sign(self)
+        return bar.sign(self)
 
     def verify(self):
         headers = {
