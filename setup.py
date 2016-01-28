@@ -6,6 +6,9 @@ if os.environ.get('CONVERT_README'):
     import pypandoc
 
     long_desc = pypandoc.convert('README.md', 'rst')
+
+    with open('README.rst', 'wb') as f:
+        f.write(long_desc.encode('utf-8'))
 else:
     long_desc = ''
 
