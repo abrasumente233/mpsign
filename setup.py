@@ -10,7 +10,7 @@ else:
     long_desc = ''
 
 setup(name='mpsign',
-      version='1.1',
+      version='1.2',
       description='a tool which signs your bars on Baidu Tieba',
       long_description=long_desc,
       classifiers=[
