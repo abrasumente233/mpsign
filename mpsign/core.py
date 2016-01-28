@@ -6,7 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-__version__ = '1.2'
+__version__ = '1.3'
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code'])
 
