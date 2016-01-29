@@ -139,9 +139,9 @@ def sign_bar(*, name, kw, fid):
     user_obj = User(user_info['bduss'])
     r = Bar(kw, fid).sign(user_obj)
     if r.code == 0:
-        print('{name} - {bar}: exp +{exp}'.format(name=name, bar=r.bar, exp=r.exp))
+        print('{name} - {bar}: exp +{exp}'.format(name=name, bar=r.bar.kw, exp=r.exp))
     else:
-        print('{name} - {bar}:{code}: {msg}'.format(name=name, bar=r.bar, code=r.code,
+        print('{name} - {bar}:{code}: {msg}'.format(name=name, bar=r.bar.kw, code=r.code,
                                                     msg=r.message))
 
     old_exp = user_table.get(where('name') == name)['exp']

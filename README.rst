@@ -30,7 +30,7 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
        >>> user = User('YOUR BDUSS')
        >>> bar = Bar(kw='chrome', fid='1074587')
        >>> bar.sign(user)
-       SignResult(message='亲，你之前已经签过了', exp=0, bar='chrome', code='160002')
+       SignResult(message='亲，你之前已经签过了', exp=0, bar=Bar(kw='chrome', fid='1074587'), code='160002')
 
    注: ``user.sign(bar)`` 与 ``bar.sign(user)`` 等价。
 

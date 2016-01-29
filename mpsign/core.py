@@ -120,7 +120,7 @@ class Bar:
 
         if not json_r['error_code'] == '0':
             return SignResult(message=json_r['error_msg'], code=json_r['error_code'],
-                              bar=self.kw, exp=0)
+                              bar=self, exp=0)
         else:
-            return SignResult(message='ok', code=0, bar=self.kw,
+            return SignResult(message='ok', code=0, bar=self,
                               exp=int(json_r['user_info']['sign_bonus_point']))
