@@ -15,7 +15,7 @@ Options:
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
   --bduss               Your Baidu BDUSS.
-  --user                Your ID, used for identify.
+  --user                Your convenient use ID.
   --delay=<second>      Delay for every single bar [default: 3].
 
 """
