@@ -29,5 +29,5 @@ setup(name='mpsign',
       zip_safe=False,
       packages=find_packages(exclude=('tests', 'tests.*')),
       install_requires=['docopt', 'requests', 'beautifulsoup4', 'cached_property',
-                        'tinydb', 'ujson'],
+                        'tinydb'],
       entry_points={'console_scripts': ['mpsign = mpsign.cmd:cmd']})
