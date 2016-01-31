@@ -23,6 +23,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 	('chrome', '1074587')
 	```
 * 签到
+
 	```python
 	>>> from mpsign.core import User, Bar
 	>>> user = User('YOUR BDUSS')
@@ -37,6 +38,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 	```
 
 * 检验 BDUSS 是否合法
+
 	```python
 	>>> from mpsign.core import User
 	>>> User('AN INVALID BDUSS').verify()
