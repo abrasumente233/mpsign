@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -
+import re
 import hashlib
 from collections import OrderedDict, namedtuple
 
@@ -6,9 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-__version__ = '1.3'
-
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code'])
+fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
 
 
 class User:
@@ -78,9 +78,17 @@ class User:
 
 
 class Bar:
-    def __init__(self, kw, fid):
+    def __init__(self, kw, fid=None):
         self.kw = kw
-        self.fid = fid
+        self._fid = fid
+
+    @cached_property
+    def fid(self):
+        if self._fid is None:
+            r = requests.get('http://tieba.baidu.com/f/like/level?kw={}'.format(self.kw))
+            return fid_pattern.search(r.text).group()
+        else:
+            return self._fid
 
     def sign(self, user):
 

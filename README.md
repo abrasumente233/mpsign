@@ -23,6 +23,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 	('chrome', '1074587')
 	```
 * 签到
+
 	```python
 	>>> from mpsign.core import User, Bar
 	>>> user = User('YOUR BDUSS')
@@ -37,6 +38,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 	```
 
 * 检验 BDUSS 是否合法
+
 	```python
 	>>> from mpsign.core import User
 	>>> User('AN INVALID BDUSS').verify()
@@ -49,6 +51,13 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 	>>> user = User('YOUR BDUSS')
 	>>> user.tbs
 	...
+	```
+* fid
+
+	```python
+	>>> from mpsign.core import Bar
+	>>> Bar('chrome').fid
+	'1074587'
 	```
 
 ## 命令行工具
@@ -73,6 +82,6 @@ Options:
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
   --bduss               Your Baidu BDUSS.
-  --user                Your ID, used for identify.
+  --user                Your convenient use ID.
   --delay=<second>      Delay for every single bar [default: 3].
 ```

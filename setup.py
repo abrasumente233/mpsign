@@ -12,8 +12,11 @@ if os.environ.get('CONVERT_README'):
 else:
     long_desc = ''
 
+with open(os.path.join(os.path.dirname(__file__), 'mpsign/VERSION'), 'rb') as f:
+    version = f.read().decode('ascii').strip()
+
 setup(name='mpsign',
-      version='1.3',
+      version=version,
       description='a tool which signs your bars on Baidu Tieba',
       long_description=long_desc,
       classifiers=[
@@ -29,5 +32,6 @@ setup(name='mpsign',
       zip_safe=False,
       packages=find_packages(exclude=('tests', 'tests.*')),
       install_requires=['docopt', 'requests', 'beautifulsoup4', 'cached_property',
-                        'tinydb', 'ujson'],
+                        'tinydb'],
+      include_package_data=True,
       entry_points={'console_scripts': ['mpsign = mpsign.cmd:cmd']})

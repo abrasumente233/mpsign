@@ -56,6 +56,14 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
        >>> user.tbs
        ...
 
+-  fid
+
+   .. code:: python
+
+       >>> from mpsign.core import Bar
+       >>> Bar('chrome').fid
+       '1074587'
+
 命令行工具
 ----------
 
@@ -83,5 +91,6 @@ MPSIGN
       -v --version          Show version.
       --without-verifying   Do not verify BDUSS.
       --bduss               Your Baidu BDUSS.
-      --user                Your ID, used for identify.
+      --user                Your convenient use ID.
       --delay=<second>      Delay for every single bar [default: 3].
+

@@ -15,17 +15,20 @@ Options:
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
   --bduss               Your Baidu BDUSS.
-  --user                Your ID, used for identify.
+  --user                Your convenient use ID.
   --delay=<second>      Delay for every single bar [default: 3].
 
 """
 import time
+import pkgutil
 from os import path
 
 from docopt import docopt
 from tinydb import TinyDB, where
 
-from mpsign.core import User, Bar, __version__
+from mpsign.core import User, Bar
+
+__version__ = pkgutil.get_data(__package__, 'VERSION').decode('ascii').strip()
 
 db = TinyDB(path.expanduser('~') + path.sep + '.mpsign')
 user_table = db.table('users', cache_size=10)
