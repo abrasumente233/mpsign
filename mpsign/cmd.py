@@ -82,7 +82,7 @@ def delete(*, name):
     user_info = user_table.get(where('name') == name)
     user_table.remove(where('name') == name)
     bar_table.remove(where('user') == user_info.eid)
-    print('finish deleting {}'.format(name))
+    print('finished deleting {}'.format(name))
 
 
 def update_all():
