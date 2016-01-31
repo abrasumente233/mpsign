@@ -7,8 +7,6 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-__version__ = '1.3'
-
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
 
