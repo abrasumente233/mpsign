@@ -165,11 +165,14 @@ def info(*, name=None):
     if users_info[0] is None:
         raise UserNotFound
 
-    print('Name\tEXP\tis bduss valid')
+    row_format = '{:>15}{:>15}{:>20}'
+
+    print(row_format.format('Name', 'EXP', 'is BDUSS valid'))
 
     for user_info in users_info:
-        print('{name}\t{exp}\t{valid}'.format(name=user_info['name'], exp=user_info['exp'],
-                                              valid=User(user_info['bduss']).verify()))
+        print(row_format.format(user_info['name'],
+                                user_info['exp'],
+                                str(User(user_info['bduss']).verify())))
 
 
 def new(*, name, bduss):
