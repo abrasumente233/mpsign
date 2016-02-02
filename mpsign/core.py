@@ -7,7 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code'])
+SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
 
 
@@ -128,7 +128,10 @@ class Bar:
 
         if not json_r['error_code'] == '0':
             return SignResult(message=json_r['error_msg'], code=json_r['error_code'],
-                              bar=self, exp=0)
+                              bar=self, exp=0, total_sign=-1, cont_sign=-1, rank=-1)
         else:
             return SignResult(message='ok', code=0, bar=self,
-                              exp=int(json_r['user_info']['sign_bonus_point']))
+                              exp=int(json_r['user_info']['sign_bonus_point']),
+                              total_sign=json_r['user_info']['total_sign_num'],
+                              cont_sign=json_r['user_info']['cont_sign_num'],
+                              rank=json_r['user_info']['user_sign_rank'])

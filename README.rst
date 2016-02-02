@@ -28,9 +28,9 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
        >>> from mpsign.core import User, Bar
        >>> user = User('YOUR BDUSS')
-       >>> bar = Bar(kw='chrome', fid='1074587')
+       >>> bar = Bar(kw='python')
        >>> bar.sign(user)
-       SignResult(message='亲，你之前已经签过了', exp=0, bar=Bar(kw='chrome', fid='1074587'), code='160002')
+       SignResult(message='ok', exp=8, bar=<mpsign.core.Bar object at 0x7f7648d35e48>, code=0, total_sign='41', rank='3249', cont_sign='4')
 
    注: ``user.sign(bar)`` 与 ``bar.sign(user)`` 等价。
 
@@ -38,6 +38,11 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
        >>> [user.sign(bar) for bar in user.bars]
        ...a list of SignResult
+
+   注: 使用 ``user.bars`` 获取一群贴吧的 fid 比让 ``core.Bar``
+   单独获取快非常多。一个贴吧的 fid 通常是不变的，所以第一次最好把 fid
+   存起来，日后使用 ``Bar('name', 'fid')`` 获取 Bar
+   实例签到会省不少流量。MPSIGN 自带的命令行工具已经这么做了。
 
 -  检验 BDUSS 是否合法
 
