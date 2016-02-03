@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -
+import time
 import re
 import hashlib
 from collections import OrderedDict, namedtuple
@@ -7,8 +8,59 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
+from .nesign import rsa_encrypt
+
+RSA_PUB_KEY = '010001'
+RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
+              'E7D570C853F368065CC57A2014666DA8AE7D493FD47D171C0D894EEE3ED7F99F6798B7F' \
+              'FD7B5873227038AD23E3197631A8CB642213B9F27D4901AB0D92BFA27542AE89085539' \
+              '6ED92775255C977F5C302F1E7ED4B1E369C12CB6B1822F'
+
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
+
+
+class InvalidCaptcha(Exception):
+    pass
+
+
+class LoginFailure(Exception):
+    def __init__(self, code, message):
+        self.code = code
+        self.message = message
+
+
+class InvalidPassword(LoginFailure):
+    pass
+
+
+class InvalidCaptcha(LoginFailure):
+    pass
+
+
+class InvalidUsername(LoginFailure):
+    pass
+
+
+class DangerousEnvironment(LoginFailure):
+    pass
+
+
+class Captcha:
+    def __init__(self, image):
+        self.image = image
+        self.input = None
+
+    def as_file(self, path):
+        with open(path, 'wb') as f:
+            for chunk in self.image:
+                f.write(chunk)
+
+    def get_image(self):
+        return self.image
+
+    def fill(self, captcha):
+        self.input = captcha
 
 
 class User:
@@ -19,6 +71,64 @@ class User:
 
     def sign(self, bar):
         return bar.sign(self)
+
+    @classmethod
+    def login(cls, username, password):
+        s = requests.Session()
+
+        # get a BAIDUID or it will present me "Please enable cookies"
+        s.get('http://wappass.baidu.com/passport/?login')
+
+        timestamp = str(int(time.time()))
+
+        payload = {
+            'loginmerge': '1',
+            'servertime': timestamp,
+            'username': username,
+            'password': rsa_encrypt(password + timestamp,
+                                    RSA_PUB_KEY, RSA_MODULUS),
+            'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'
+        }
+
+        r = s.post('http://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
+                   data=payload)
+
+        # see if captcha is needed
+        vcodestr = r.json()['data']['codeString']
+        if not vcodestr == '':
+            r_captcha = s.get('http://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
+                              stream=True)
+
+            captcha = Captcha(r_captcha.raw)
+            user_input = yield captcha
+            if user_input is None and captcha.input is None:
+                raise InvalidCaptcha(500002, 'Your captcha is wrong.')
+            user_input = user_input or captcha.input
+
+            payload['vcodestr'] = vcodestr
+            payload['verifycode'] = user_input
+
+            r = s.post('http://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
+                       data=payload)
+
+        data = r.json()
+        status = data['errInfo']['no']
+        message = data['errInfo']['msg']
+        print(status)
+        if status == '0':
+            yield cls(data['data']['bduss'])
+        elif status == '400011':
+            raise InvalidPassword(400011, message)
+        elif status == '500002':
+            raise InvalidCaptcha(500002, message)
+        elif status == '50000':
+            raise DangerousEnvironment(50000, message)
+        elif status == '400010' or status == '230048':
+            # 400010 unexisting user
+            # 230048 just invalid because of the format
+            raise InvalidUsername(int(status), message)
+        else:
+            raise LoginFailure(status, message)
 
     def verify(self):
         headers = {
@@ -43,8 +153,7 @@ class User:
                                                     '_diordna_458_084/alorotoM_61_2.1.4_625BM/1200a/39668C8F770'
                                                     '34455D4DED02169F3F7C7%7C132773740707453/1',
                                       'Referer': 'http://tieba.baidu.com/'},
-                             cookies={'BDUSS': self.bduss}
-                             )
+                             cookies={'BDUSS': self.bduss})
 
         self._tbs = tbs_r.json()['tbs']
         return self._tbs
@@ -54,9 +163,8 @@ class User:
         page = 1
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),
-                             headers={'Content-Type': 'application/x-www-form-urlencoded', },
-                             cookies={'BDUSS': self.bduss}
-                             )
+                             headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                             cookies={'BDUSS': self.bduss})
 
             r.encoding = 'gbk'
 

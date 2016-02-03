@@ -13,21 +13,48 @@ API
 
 MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些示例。
 
+-  登录
+
+   -  通过账号密码 \`\`\`python from mpsign.core import User, Captcha,
+      LoginFailure
+
+      user\_gen = User.login('USERNAME', 'PASSWORD') # 登陆的接口是用
+      generator 实现的
+
+      try: result = user\_gen.send(None) # 启动 generator if
+      isinstance(result, Captcha): # 是否需要验证码
+      result.as\_file('captcha.gif') # 验证码图片保存到 captcha.gif
+      your\_input = input('captcha: ') # 获取用户输入 user =
+      user\_gen.send(your\_input) # 发送验证码给 generator else: user =
+      result # 不需要验证码的话，result 即是新建的 User 实例 except
+      LoginFailure as ex: raise ex \`\`\`
+
+      注: ``LoginFailure`` 还有如下子异常: ``InvalidPassword``,
+      ``InvalidCaptcha``, ``InvalidUsername``, ``DangerousEnvironment``
+
+      注: ``user = user_gen.send(your_input)`` 也等价与以下代码:
+
+      .. code:: python
+
+          result.fill(your_input)  # result 是一个 Captcha 对象
+          user_gen.send(None)
+
+   -  通过 BDUSS
+      ``python     >>> from mpsign.core import User     >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到``
+
 -  获取喜欢的吧
 
    .. code:: python
 
-       >>> from mpsign.core import User
-       >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到
-       >>> (user.bars[0].kw, user.bars[0].fid)
-       ('chrome', '1074587')
+       >>> user.bars[0].kw
+       'chrome'
 
 -  签到
 
    .. code:: python
 
        >>> from mpsign.core import User, Bar
-       >>> user = User('YOUR BDUSS')
+       >>> user = ...get User instance
        >>> bar = Bar(kw='python')
        >>> bar.sign(user)
        SignResult(message='ok', exp=8, bar=<mpsign.core.Bar object at 0x7f7648d35e48>, code=0, total_sign='41', rank='3249', cont_sign='4')
@@ -56,8 +83,6 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
    .. code:: python
 
-       >>> from mpsign.core import User
-       >>> user = User('YOUR BDUSS')
        >>> user.tbs
        ...
 
