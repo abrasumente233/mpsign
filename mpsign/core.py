@@ -96,14 +96,20 @@ class User:
         # see if captcha is needed
         vcodestr = r.json()['data']['codeString']
         if not vcodestr == '':
-            r_captcha = s.get('http://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
-                              stream=True)
+            while True:
+                r_captcha = s.get('http://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
+                                  stream=True)
 
-            captcha = Captcha(r_captcha.raw)
-            user_input = yield captcha
-            if user_input is None and captcha.input is None:
-                raise InvalidCaptcha(500002, 'Your captcha is wrong.')
-            user_input = user_input or captcha.input
+                captcha = Captcha(r_captcha.raw)
+                user_input = yield captcha
+                user_input = user_input or captcha.input
+                if user_input is None:
+                    raise InvalidCaptcha(500002, 'Your captcha is wrong.')
+                elif user_input == 'another':
+                    continue
+                else:
+                    break
+
 
             payload['vcodestr'] = vcodestr
             payload['verifycode'] = user_input
