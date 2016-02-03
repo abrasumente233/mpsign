@@ -114,7 +114,7 @@ class User:
         data = r.json()
         status = data['errInfo']['no']
         message = data['errInfo']['msg']
-        print(status)
+
         if status == '0':
             yield cls(data['data']['bduss'])
         elif status == '400011':
