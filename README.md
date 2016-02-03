@@ -17,6 +17,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 * 登录
 
     * 通过账号密码
+
         ```python
         from mpsign.core import User, Captcha, LoginFailure
 
@@ -44,10 +45,12 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
         ```
 
     * 通过 BDUSS
+
         ```python
         >>> from mpsign.core import User
         >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到
 	    ```
+
 * 获取喜欢的吧
 
 	```python
