@@ -3,6 +3,7 @@
 """mpsign
 
 Usage:
+  mpsign login <username>
   mpsign (new|set) <user> <bduss> [--without-verifying]
   mpsign (delete|update) [<user>]
   mpsign sign [<user>] [--delay=<second>]
@@ -15,22 +16,28 @@ Options:
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
   --bduss               Your Baidu BDUSS.
-  --user                Your convenient use ID.
+  --username            Your Baidu ID
+  --user                Your mpsign ID.
   --delay=<second>      Delay for every single bar [default: 3].
 
 """
 import time
+import threading
+import http.server
+import sys
+import os
 import pkgutil
 from os import path
+from getpass import getpass
 
 from docopt import docopt
 from tinydb import TinyDB, where
 
-from mpsign.core import User, Bar
+from .core import *
 
 __version__ = pkgutil.get_data(__package__, 'VERSION').decode('ascii').strip()
 
-db = TinyDB(path.expanduser('~') + path.sep + '.mpsign')
+db = TinyDB(data_directory + path.sep + '.mpsigndb')
 user_table = db.table('users', cache_size=10)
 bar_table = db.table('bars')
 
@@ -41,6 +48,25 @@ class UserNotFound(Exception):
 
 class InvalidBDUSSException(Exception):
     pass
+
+
+class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+        pass
+
+    def do_GET(self):
+        """Serve a GET request."""
+        captcha_file = open('{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=path.sep),
+                                 'rb')
+        self.send_response(200)
+        self.send_header("Content-type", 'image/gif')
+        fs = os.fstat(captcha_file.fileno())
+        self.send_header("Content-Length", str(fs[6]))
+        self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+        self.end_headers()
+        self.copyfile(captcha_file, self.wfile)
+        captcha_file.close()
 
 
 def check_user(func):
@@ -82,7 +108,7 @@ def delete(*, name):
     user_info = user_table.get(where('name') == name)
     user_table.remove(where('name') == name)
     bar_table.remove(where('user') == user_info.eid)
-    print('finish deleting {}'.format(name))
+    print('finished deleting {}'.format(name))
 
 
 def update_all():
@@ -165,15 +191,137 @@ def info(*, name=None):
     if users_info[0] is None:
         raise UserNotFound
 
-    print('Name\tEXP\tis bduss valid')
+    row_format = '{:>15}{:>15}{:>20}'
+
+    print(row_format.format('Name', 'EXP', 'is BDUSS valid'))
 
     for user_info in users_info:
-        print('{name}\t{exp}\t{valid}'.format(name=user_info['name'], exp=user_info['exp'],
-                                              valid=User(user_info['bduss']).verify()))
+        print(row_format.format(user_info['name'],
+                                user_info['exp'],
+                                str(User(user_info['bduss']).verify())))
 
 
 def new(*, name, bduss):
     user_table.insert({'name': name, 'bduss': bduss, 'exp': 0})
+
+
+def get_captcha():
+    print('Enter the captcha you see. (left the input empty to change the captcha)')
+    return input('Captcha: ')
+
+
+def caca(captcha):
+    print('Launching cacaview, press key q to exit caca.')
+    captcha.as_file()
+    caca_r = os.system('cacaview {}'.format(captcha.path))
+
+    if caca_r == 32512:
+        # cacaview not found
+        print('Seems you have not installed caca yet.')
+        print('On Ubuntu, you could use \'sudo apt-get install caca-utils\'')
+        sys.exit(0)
+    else:
+        return get_captcha()
+
+
+def xdgopen(captcha):
+    print('Launching your desktop image viewer.')
+    captcha.as_file()
+    xdg_r = os.system('xdg-open {}'.format(captcha.path))
+
+    if xdg_r == 32512:
+        # not found
+        print('Seems you have not installed a desktop image viewer yet.')
+        print('Try caca or http instead.')
+        sys.exit(0)
+    else:
+        return get_captcha()
+
+
+class HTTPThread(threading.Thread):
+    def __init__(self, port, captcha):
+        super().__init__()
+        self.captcha = captcha
+        self.port = port
+        self.httpd = None
+
+    def run(self):
+        print('Running http server at 127.0.0.1:{}'.format(self.port))
+        self.httpd = http.server.HTTPServer(('', self.port), CaptchaRequestHandler)
+        self.httpd.serve_forever()
+
+
+def via_http(captcha):
+    try:
+        os.mkdir('www')
+    except Exception:
+        pass
+
+    captcha.as_file('{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=path.sep))
+
+    t = HTTPThread(8823, captcha)
+    t.start()
+
+    user_input = get_captcha()
+
+    print('Shutting down the http server, please wait...')
+    t.httpd.server_close()
+    t.httpd.shutdown()
+    print('Finished shut down the httpd.')
+    return user_input
+
+
+def login(username, password):
+    while True:
+        user_gen = User.login(username, password)
+
+        try:
+            result = user_gen.send(None)
+            if isinstance(result, Captcha):
+
+                selections = (('caca', caca, 'a command line image viewer'),
+                              ('xdg-open', xdgopen, 'view it on your Linux desktop'),
+                              ('via http', via_http, 'serve the captcha image via http'))
+
+                while True:
+                    print('Captcha is needed, how do you want to view it?')
+
+                    for i, sel in enumerate(selections):
+                        print('  {no}) {name} -- {desc}'.format(no=i+1, name=sel[0], desc=sel[2]))
+                    choice = input('Your choice(1-{}): '.format(len(selections)))
+
+                    user_input = selections[int(choice)-1][1](result).strip()  # pass the Captcha object
+
+                    result.destroy()
+
+                    if user_input == 'another' or user_input == '':
+                        result = user_gen.send('another')
+                        continue
+                    else:
+                        break
+
+                user = user_gen.send(user_input)
+            else:
+                user = result
+
+            print('Only a few things left to do...')
+            user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
+            new(name=user_id, bduss=user.bduss)
+            print('It\'s all done!')
+            break
+
+        except InvalidPassword:
+            print('You have entered the wrong password. Please try again.')
+            password = getpass()
+        except InvalidUsername:
+            print('You have entered the wrong username. Please try again.')
+            break
+        except InvalidCaptcha:
+            print('You have got the captcha wrong. Please try again')
+            continue
+        except LoginFailure as e:
+            print('Unknown exception.\nerror code:{0}\nmessage: {1}'.format(e.code, e.message))
+            break
 
 
 @check_user
@@ -194,6 +342,9 @@ def cmd():
                     raise InvalidBDUSSException
             new(name=arguments['<user>'], bduss=arguments['<bduss>'])
             update(name=arguments['<user>'])
+        elif arguments['login']:
+            password = getpass()
+            login(arguments['<username>'], password)
         elif arguments['set']:
             if not arguments['--without-verifying']:
                 if not User(arguments['<bduss>']).verify():
@@ -226,7 +377,7 @@ def cmd():
         print('BDUSS not valid')
 
     except Exception as e:
-        print(e)
+        raise e
 
     db.close()
 

@@ -13,24 +13,60 @@ API
 
 MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些示例。
 
+-  登录
+
+   -  通过账号密码
+
+      .. code:: python
+
+          from mpsign.core import User, Captcha, LoginFailure
+
+          user_gen = User.login('USERNAME', 'PASSWORD')  # 登陆的接口是用 generator 实现的
+
+          try:
+              result = user_gen.send(None)  # 启动 generator
+              if isinstance(result, Captcha):  # 是否需要验证码
+                  result.as_file('captcha.gif')  # 验证码图片保存到 captcha.gif
+                  your_input = input('captcha: ')  # 获取用户输入
+                  user = user_gen.send(your_input)  # 发送验证码给 generator
+              else:
+                  user = result  # 不需要验证码的话，result 即是新建的 User 实例
+          except LoginFailure as ex:
+              raise ex
+
+      注: ``LoginFailure`` 还有如下子异常: ``InvalidPassword``,
+      ``InvalidCaptcha``, ``InvalidUsername``, ``DangerousEnvironment``
+
+      注: ``user = user_gen.send(your_input)`` 也等价与以下代码:
+
+      .. code:: python
+
+          result.fill(your_input)  # result 是一个 Captcha 对象
+          user_gen.send(None)
+
+   -  通过 BDUSS
+
+      .. code:: python
+
+          >>> from mpsign.core import User
+          >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到
+
 -  获取喜欢的吧
 
    .. code:: python
 
-       >>> from mpsign.core import User
-       >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到
-       >>> (user.bars[0].kw, user.bars[0].fid)
-       ('chrome', '1074587')
+       >>> user.bars[0].kw
+       'chrome'
 
 -  签到
 
    .. code:: python
 
        >>> from mpsign.core import User, Bar
-       >>> user = User('YOUR BDUSS')
-       >>> bar = Bar(kw='chrome', fid='1074587')
+       >>> user = ...get User instance
+       >>> bar = Bar(kw='python')
        >>> bar.sign(user)
-       SignResult(message='亲，你之前已经签过了', exp=0, bar=Bar(kw='chrome', fid='1074587'), code='160002')
+       SignResult(message='ok', exp=8, bar=<mpsign.core.Bar object at 0x7f7648d35e48>, code=0, total_sign='41', rank='3249', cont_sign='4')
 
    注: ``user.sign(bar)`` 与 ``bar.sign(user)`` 等价。
 
@@ -38,6 +74,11 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
        >>> [user.sign(bar) for bar in user.bars]
        ...a list of SignResult
+
+   注: 使用 ``user.bars`` 获取一群贴吧的 fid 比让 ``core.Bar``
+   单独获取快非常多。一个贴吧的 fid 通常是不变的，所以第一次最好把 fid
+   存起来，日后使用 ``Bar('name', 'fid')`` 获取 Bar
+   实例签到会省不少流量。MPSIGN 自带的命令行工具已经这么做了。
 
 -  检验 BDUSS 是否合法
 
@@ -51,8 +92,6 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
    .. code:: python
 
-       >>> from mpsign.core import User
-       >>> user = User('YOUR BDUSS')
        >>> user.tbs
        ...
 
@@ -69,7 +108,7 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
 
 MPSIGN
 提供一个现成的命令行工具，自带一个轻量的用户管理系统。所有的用户信息都会被储存在
-``~/.mpsign`` 之下。你可以配合 Linux Crontab
+``~/.mpsign/.mpsigndb`` 之下。你可以配合 Linux Crontab
 与此工具快速设置一个全自动的签到系统。
 
 基本用法
@@ -79,6 +118,7 @@ MPSIGN
 
     $ mpsign --help
     Usage:
+      mpsign login <username>
       mpsign (new|set) <user> <bduss> [--without-verifying]
       mpsign (delete|update) [<user>]
       mpsign sign [<user>] [--delay=<second>]
@@ -91,6 +131,7 @@ MPSIGN
       -v --version          Show version.
       --without-verifying   Do not verify BDUSS.
       --bduss               Your Baidu BDUSS.
-      --user                Your convenient use ID.
+      --username            Your Baidu ID
+      --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
 
