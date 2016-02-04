@@ -97,13 +97,14 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 ## 命令行工具
 
 
-MPSIGN 提供一个现成的命令行工具，自带一个轻量的用户管理系统。所有的用户信息都会被储存在 `~/.mpsign` 之下。你可以配合 Linux Crontab 与此工具快速设置一个全自动的签到系统。
+MPSIGN 提供一个现成的命令行工具，自带一个轻量的用户管理系统。所有的用户信息都会被储存在 `~/.mpsign/.mpsigndb` 之下。你可以配合 Linux Crontab 与此工具快速设置一个全自动的签到系统。
 
 ### 基本用法
 
 ```bash
 $ mpsign --help
 Usage:
+  mpsign login <username>
   mpsign (new|set) <user> <bduss> [--without-verifying]
   mpsign (delete|update) [<user>]
   mpsign sign [<user>] [--delay=<second>]
@@ -116,6 +117,7 @@ Options:
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
   --bduss               Your Baidu BDUSS.
-  --user                Your convenient use ID.
+  --username            Your Baidu ID
+  --user                Your mpsign ID.
   --delay=<second>      Delay for every single bar [default: 3].
 ```

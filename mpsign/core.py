@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -
+import os
 import time
 import re
 import hashlib
@@ -15,6 +16,26 @@ RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA4964
               'E7D570C853F368065CC57A2014666DA8AE7D493FD47D171C0D894EEE3ED7F99F6798B7F' \
               'FD7B5873227038AD23E3197631A8CB642213B9F27D4901AB0D92BFA27542AE89085539' \
               '6ED92775255C977F5C302F1E7ED4B1E369C12CB6B1822F'
+
+data_directory = os.path.expanduser('~' + os.path.sep + '.mpsign')
+
+try:  # move old files
+    if os.path.isfile(data_directory):  # 1.4 -- 1.5
+        os.rename(data_directory, os.path.expanduser('~') + os.sep + '.mpsignbak')
+        try:
+            os.mkdir(data_directory)
+        except Exception:
+            pass
+        os.rename(os.path.expanduser('~') + os.sep + '.mpsignbak',
+                  data_directory + os.sep + '.mpsigndb')
+    else:  # new to mpsign 1.5
+        try:
+            os.mkdir(data_directory)
+        except Exception:
+            pass
+except:
+    pass
+
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
@@ -50,9 +71,20 @@ class Captcha:
     def __init__(self, image):
         self.image = image
         self.input = None
+        self.path = None
 
-    def as_file(self, path):
-        with open(path, 'wb') as f:
+    def as_file(self, path=None):
+        if path is None:
+            try:
+                os.mkdir('{d}{sep}www'.format(d=data_directory, sep=os.sep))
+            except:
+                pass
+
+            self.path = '{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=os.sep)
+        else:
+            self.path = path
+
+        with open(self.path, 'wb') as f:
             for chunk in self.image:
                 f.write(chunk)
 
@@ -61,6 +93,11 @@ class Captcha:
 
     def fill(self, captcha):
         self.input = captcha
+
+    def destroy(self):
+        if self.path is not None:
+            os.remove(self.path)
+        self.image.close()
 
 
 class User:
