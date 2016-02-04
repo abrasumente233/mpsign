@@ -292,6 +292,8 @@ def login(username, password):
 
                     user_input = selections[int(choice)-1][1](result).strip()  # pass the Captcha object
 
+                    result.destroy()
+
                     if user_input == 'another' or user_input == '':
                         result = user_gen.send('another')
                         continue

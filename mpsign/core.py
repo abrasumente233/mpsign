@@ -95,9 +95,16 @@ class Captcha:
         self.input = captcha
 
     def destroy(self):
-        if self.path is not None:
-            os.remove(self.path)
-        self.image.close()
+        try:
+            if self.path is not None:
+                os.remove(self.path)
+        except:
+            pass
+
+        try:
+            self.image.close()
+        except:
+            pass
 
 
 class User:
