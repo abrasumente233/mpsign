@@ -55,9 +55,6 @@ class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-    def __init__(self, request, client_address, server):
-        super().__init__(request, client_address, server)
-
     def do_GET(self):
         """Serve a GET request."""
         captcha_file = open('{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=path.sep),
