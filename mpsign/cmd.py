@@ -253,7 +253,7 @@ class HTTPThread(threading.Thread):
 
 def via_http(captcha):
     try:
-        os.mkdir('www')
+        os.mkdir('{d}{sep}www'.format(d=data_directory, sep=path.sep))
     except Exception:
         pass
 
