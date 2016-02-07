@@ -41,10 +41,6 @@ SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_s
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
 
 
-class InvalidCaptcha(Exception):
-    pass
-
-
 class LoginFailure(Exception):
     def __init__(self, code, message):
         self.code = code
