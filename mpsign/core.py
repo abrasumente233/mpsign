@@ -289,3 +289,12 @@ class Bar:
                               total_sign=json_r['user_info']['total_sign_num'],
                               cont_sign=json_r['user_info']['cont_sign_num'],
                               rank=json_r['user_info']['user_sign_rank'])
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            raise TypeError('except {0}, got {1}'.format(type(self).__name__, type(other).__name__))
+        return self.kw == other.kw
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
