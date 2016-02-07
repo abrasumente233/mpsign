@@ -26,7 +26,6 @@ import threading
 import http.server
 import sys
 import os
-import pkgutil
 from os import path
 from getpass import getpass
 
@@ -34,8 +33,7 @@ from docopt import docopt
 from tinydb import TinyDB, where
 
 from .core import *
-
-__version__ = pkgutil.get_data(__package__, 'VERSION').decode('ascii').strip()
+from . import __version__
 
 db = TinyDB(data_directory + path.sep + '.mpsigndb')
 user_table = db.table('users', cache_size=10)
