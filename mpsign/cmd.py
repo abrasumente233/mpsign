@@ -306,7 +306,7 @@ def login(username, password):
             user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
             new(name=user_id, bduss=user.bduss)
             print('Fetching your favorite bars...')
-            update(user_id)
+            update(user=user_id)
             print('It\'s all done!')
             break
 
