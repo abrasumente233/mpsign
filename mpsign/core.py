@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-from .nesign import rsa_encrypt
+from .crypto import rsa_encrypt
 
 RSA_PUB_KEY = '010001'
 RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
