@@ -19,6 +19,19 @@ RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA4964
 
 data_directory = os.path.expanduser('~' + os.path.sep + '.mpsign')
 
+# detect parser for BeautifulSoup
+try:
+    import lxml
+    parser = 'lxml'
+    del lxml
+except ImportError:
+    try:
+        import html5lib
+        parser = 'html5lib'
+        del html5lib
+    except ImportError:
+        parser = None
+
 try:  # move old files
     if os.path.isfile(data_directory):  # 1.4 -- 1.5
         os.rename(data_directory, os.path.expanduser('~') + os.sep + '.mpsignbak')
@@ -150,7 +163,6 @@ class User:
                 else:
                     break
 
-
             payload['vcodestr'] = vcodestr
             payload['verifycode'] = user_input
 
@@ -206,6 +218,9 @@ class User:
 
     @cached_property
     def bars(self):
+        if parser is None:
+            raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
+
         page = 1
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),
@@ -214,7 +229,7 @@ class User:
 
             r.encoding = 'gbk'
 
-            soup = BeautifulSoup(r.text, "lxml")
+            soup = BeautifulSoup(r.text, parser)
             rows = soup.find_all('tr')[1:]  # find all rows except the table header
 
             for row in rows:
@@ -297,4 +312,3 @@ class Bar:
 
     def __ne__(self, other):
         return not self.__eq__(other)
-    

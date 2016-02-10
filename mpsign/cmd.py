@@ -97,7 +97,7 @@ def delete_all():
     users_info = user_table.all()
     for user_info in user_table.all():
         delete(name=user_info['name'])
-    print('done, {} users are deleted.'.format(len(users_info)))
+    print('done, {0} users are deleted.'.format(len(users_info)))
 
 
 @check_user
@@ -105,14 +105,14 @@ def delete(*, name):
     user_info = user_table.get(where('name') == name)
     user_table.remove(where('name') == name)
     bar_table.remove(where('user') == user_info.eid)
-    print('finished deleting {}'.format(name))
+    print('finished deleting {0}'.format(name))
 
 
 def update_all():
     count = 0
     for user_info in user_table.all():
         count += update(name=user_info['name'])
-    print('done, totally {} bars was found!'.format(count))
+    print('done, totally {0} bars was found!'.format(count))
 
 
 @check_user
@@ -243,7 +243,7 @@ class HTTPThread(threading.Thread):
         self.httpd = None
 
     def run(self):
-        print('Running http server at 127.0.0.1:{}'.format(self.port))
+        print('Running http server at 127.0.0.1:{0}'.format(self.port))
         self.httpd = http.server.HTTPServer(('', self.port), CaptchaRequestHandler)
         self.httpd.serve_forever()
 
@@ -285,7 +285,7 @@ def login(username, password):
 
                     for i, sel in enumerate(selections):
                         print('  {no}) {name} -- {desc}'.format(no=i+1, name=sel[0], desc=sel[2]))
-                    choice = input('Your choice(1-{}): '.format(len(selections)))
+                    choice = input('Your choice(1-{0}): '.format(len(selections)))
 
                     user_input = selections[int(choice)-1][1](result).strip()  # pass the Captcha object
 
@@ -305,7 +305,7 @@ def login(username, password):
             user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
             new(name=user_id, bduss=user.bduss)
             print('Fetching your favorite bars...')
-            update(user=user_id)
+            update(name=user_id)
             print('It\'s all done!')
             break
 
@@ -368,13 +368,15 @@ def cmd():
 
         elif arguments['info']:
             info(name=arguments['<user>'])
-
+    except ImportError as e:
+        # lxml or html5lib not found
+        print(e.msg)
     except UserNotFound:
         print('User not found.')
-
     except InvalidBDUSSException:
         print('BDUSS not valid')
-
+    except KeyboardInterrupt:
+        print('Operation cancelled by user.')
     except Exception as e:
         raise e
 
