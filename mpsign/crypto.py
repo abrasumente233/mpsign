@@ -23,20 +23,18 @@ def encrypt_string(key, string):
     chunk_size = int((len(n_in_hex) / 2)) - 2 if len(n_in_hex) % 4 is 0 else \
         int(len(n_in_hex) / 2) + 1 - 2
 
-    string_length = len(string)
-
     # 让 char_list 的长度变成 chunk_size 的倍数
     while len(char_list) % chunk_size is not 0:
         char_list.append(0)
 
     char_list_length = len(char_list)
-    result = ''  # 16进制表示的结果
+    result = []  # 16进制表示的结果, 稍后再拼接成字符串
 
     i = j = 0
     while i < char_list_length:
         while j < (i + chunk_size):
             current_number = char_list[j] + (char_list[j + 1] << 8)
-            result = dec2hex(current_number) + result
+            result.insert(0, dec2hex(current_number))
             j += 2
 
         # 原 RSA.js 实现中每个 chunk 后面都有一个空格
@@ -44,7 +42,7 @@ def encrypt_string(key, string):
         # 但为了简化设计，这里没加，而且密码那点长度也不会破出一个 chunk (似乎是126)
         i += chunk_size
 
-    return int(result, 16)  # 把16进制表示的 result 转换成 int
+    return int(''.join(result), 16)  # 把16进制表示的 result 转换成 int
 
 
 def rsa_encrypt(text, n, e):

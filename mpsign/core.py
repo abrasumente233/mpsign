@@ -126,7 +126,7 @@ class User:
             'servertime': timestamp,
             'username': username,
             'password': rsa_encrypt(password + timestamp,
-                                    RSA_PUB_KEY, RSA_MODULUS),
+                                    RSA_MODULUS, RSA_PUB_KEY),
             'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'
         }
 

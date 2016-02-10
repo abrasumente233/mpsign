@@ -25,7 +25,6 @@ import time
 import threading
 import http.server
 import sys
-import os
 from os import path
 from getpass import getpass
 
