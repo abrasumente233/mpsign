@@ -278,7 +278,7 @@ def via_http(captcha):
     print('Shutting down the http server, please wait...')
     t.httpd.server_close()
     t.httpd.shutdown()
-    print('Finished shut down the httpd.')
+    print('Finished shutting down the httpd.')
     return user_input
 
 
