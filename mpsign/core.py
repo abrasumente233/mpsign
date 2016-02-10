@@ -185,6 +185,8 @@ class User:
             # 400010 unexisting user
             # 230048 just invalid because of the format
             raise InvalidUsername(int(status), message)
+        elif status == '400101':
+            raise LoginFailure(400101, 'Email authentication is needed. Use BDUSS instead.')
         else:
             raise LoginFailure(status, message)
 
