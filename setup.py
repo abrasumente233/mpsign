@@ -23,7 +23,7 @@ setup(name='mpsign',
           'Development Status :: 4 - Beta',
           'License :: OSI Approved :: MIT License',
           'Operating System :: OS Independent',
-          'Intended Audience :: Developers'
+          'Intended Audience :: Developers',
           'Programming Language :: Python :: 3',
           'Topic :: Utilities'
       ],
