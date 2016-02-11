@@ -22,6 +22,8 @@ setup(name='mpsign',
       classifiers=[
           'Development Status :: 4 - Beta',
           'License :: OSI Approved :: MIT License',
+          'Operating System :: OS Independent',
+          'Intended Audience :: Developers'
           'Programming Language :: Python :: 3',
           'Topic :: Utilities'
       ],

@@ -25,8 +25,6 @@ import time
 import threading
 import http.server
 import sys
-import os
-import pkgutil
 from os import path
 from getpass import getpass
 
@@ -34,12 +32,15 @@ from docopt import docopt
 from tinydb import TinyDB, where
 
 from .core import *
-
-__version__ = pkgutil.get_data(__package__, 'VERSION').decode('ascii').strip()
+from . import __version__
 
 db = TinyDB(data_directory + path.sep + '.mpsigndb')
 user_table = db.table('users', cache_size=10)
 bar_table = db.table('bars')
+
+
+class UserDuplicated(Exception):
+    pass
 
 
 class UserNotFound(Exception):
@@ -69,17 +70,26 @@ class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
         captcha_file.close()
 
 
-def check_user(func):
-    def wrapper(*args, **kwargs):
-        field_existence = user_table.search(where('name').exists())
-        if not field_existence:
-            raise UserNotFound
+def is_user_existed(name):
+    field_existence = user_table.search(where('name').exists())
+    if not field_existence:
+        raise UserNotFound
 
-        user_existence = user_table.search(where('name') == kwargs['name'])
-        if len(user_existence) == 1:
+    user_existence = user_table.search(where('name') == name)
+    return True if len(user_existence) is 1 else False
+
+
+def check_user_duplicated(name):
+    if is_user_existed(name):
+        raise UserDuplicated()
+
+
+def is_user_existed_dec(func):
+    def wrapper(*args, **kwargs):
+        if is_user_existed(kwargs['name']):
             return func(*args, **kwargs)
         else:
-            raise UserNotFound
+            raise UserNotFound()
 
     return wrapper
 
@@ -100,25 +110,25 @@ def delete_all():
     users_info = user_table.all()
     for user_info in user_table.all():
         delete(name=user_info['name'])
-    print('done, {} users are deleted.'.format(len(users_info)))
+    print('done, {0} users are deleted.'.format(len(users_info)))
 
 
-@check_user
+@is_user_existed_dec
 def delete(*, name):
     user_info = user_table.get(where('name') == name)
     user_table.remove(where('name') == name)
     bar_table.remove(where('user') == user_info.eid)
-    print('finished deleting {}'.format(name))
+    print('finished deleting {0}'.format(name))
 
 
 def update_all():
     count = 0
     for user_info in user_table.all():
         count += update(name=user_info['name'])
-    print('done, totally {} bars was found!'.format(count))
+    print('done, totally {0} bars was found!'.format(count))
 
 
-@check_user
+@is_user_existed_dec
 def update(*, name):
     user_info = user_table.get(where('name') == name)
 
@@ -146,7 +156,7 @@ def sign_all(delay=None):
     return exp
 
 
-@check_user
+@is_user_existed_dec
 def sign(*, name, delay=None):
     user_info = user_table.get(where('name') == name)
     bars_info = bar_table.search(where('user') == user_info.eid)
@@ -162,7 +172,7 @@ def sign(*, name, delay=None):
     return exp
 
 
-@check_user
+@is_user_existed_dec
 def sign_bar(*, name, kw, fid):
     user_info = user_table.get(where('name') == name)
     user_obj = User(user_info['bduss'])
@@ -202,6 +212,7 @@ def info(*, name=None):
 
 
 def new(*, name, bduss):
+    check_user_duplicated(name)
     user_table.insert({'name': name, 'bduss': bduss, 'exp': 0})
 
 
@@ -246,14 +257,14 @@ class HTTPThread(threading.Thread):
         self.httpd = None
 
     def run(self):
-        print('Running http server at 127.0.0.1:{}'.format(self.port))
+        print('Running http server at 127.0.0.1:{0}'.format(self.port))
         self.httpd = http.server.HTTPServer(('', self.port), CaptchaRequestHandler)
         self.httpd.serve_forever()
 
 
 def via_http(captcha):
     try:
-        os.mkdir('www')
+        os.mkdir('{d}{sep}www'.format(d=data_directory, sep=path.sep))
     except Exception:
         pass
 
@@ -267,7 +278,7 @@ def via_http(captcha):
     print('Shutting down the http server, please wait...')
     t.httpd.server_close()
     t.httpd.shutdown()
-    print('Finished shut down the httpd.')
+    print('Finished shutting down the httpd.')
     return user_input
 
 
@@ -288,7 +299,7 @@ def login(username, password):
 
                     for i, sel in enumerate(selections):
                         print('  {no}) {name} -- {desc}'.format(no=i+1, name=sel[0], desc=sel[2]))
-                    choice = input('Your choice(1-{}): '.format(len(selections)))
+                    choice = input('Your choice(1-{0}): '.format(len(selections)))
 
                     user_input = selections[int(choice)-1][1](result).strip()  # pass the Captcha object
 
@@ -305,8 +316,16 @@ def login(username, password):
                 user = result
 
             print('Only a few things left to do...')
-            user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
-            new(name=user_id, bduss=user.bduss)
+            while True:
+                try:
+                    user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
+                    new(name=user_id, bduss=user.bduss)
+                    break
+                except UserDuplicated:
+                    print('duplicated username {0}, please pick another one.'.format(user_id))
+
+            print('Fetching your favorite bars...')
+            update(name=user_id)
             print('It\'s all done!')
             break
 
@@ -324,7 +343,7 @@ def login(username, password):
             break
 
 
-@check_user
+@is_user_existed_dec
 def modify(*, name, bduss):
     user_table.update({'bduss': bduss}, where('name') == name)
 
@@ -369,13 +388,16 @@ def cmd():
 
         elif arguments['info']:
             info(name=arguments['<user>'])
-
+    except ImportError as e:
+        # lxml or html5lib not found
+        print(e.msg)
+        print('Please try again by using `mpsign update [user]`')
     except UserNotFound:
         print('User not found.')
-
     except InvalidBDUSSException:
         print('BDUSS not valid')
-
+    except KeyboardInterrupt:
+        print('Operation cancelled by user.')
     except Exception as e:
         raise e
 

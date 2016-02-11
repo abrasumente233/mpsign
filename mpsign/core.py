@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-from .nesign import rsa_encrypt
+from .crypto import rsa_encrypt
 
 RSA_PUB_KEY = '010001'
 RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
@@ -18,6 +18,19 @@ RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA4964
               '6ED92775255C977F5C302F1E7ED4B1E369C12CB6B1822F'
 
 data_directory = os.path.expanduser('~' + os.path.sep + '.mpsign')
+
+# detect parser for BeautifulSoup
+try:
+    import lxml
+    parser = 'lxml'
+    del lxml
+except ImportError:
+    try:
+        import html5lib
+        parser = 'html5lib'
+        del html5lib
+    except ImportError:
+        parser = None
 
 try:  # move old files
     if os.path.isfile(data_directory):  # 1.4 -- 1.5
@@ -39,10 +52,6 @@ except:
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
-
-
-class InvalidCaptcha(Exception):
-    pass
 
 
 class LoginFailure(Exception):
@@ -130,7 +139,7 @@ class User:
             'servertime': timestamp,
             'username': username,
             'password': rsa_encrypt(password + timestamp,
-                                    RSA_PUB_KEY, RSA_MODULUS),
+                                    RSA_MODULUS, RSA_PUB_KEY),
             'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'
         }
 
@@ -154,7 +163,6 @@ class User:
                 else:
                     break
 
-
             payload['vcodestr'] = vcodestr
             payload['verifycode'] = user_input
 
@@ -177,6 +185,8 @@ class User:
             # 400010 unexisting user
             # 230048 just invalid because of the format
             raise InvalidUsername(int(status), message)
+        elif status == '400101':
+            raise LoginFailure(400101, 'Email authentication is needed. Use BDUSS instead.')
         else:
             raise LoginFailure(status, message)
 
@@ -210,6 +220,9 @@ class User:
 
     @cached_property
     def bars(self):
+        if parser is None:
+            raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
+
         page = 1
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),
@@ -218,7 +231,7 @@ class User:
 
             r.encoding = 'gbk'
 
-            soup = BeautifulSoup(r.text, "lxml")
+            soup = BeautifulSoup(r.text, parser)
             rows = soup.find_all('tr')[1:]  # find all rows except the table header
 
             for row in rows:
@@ -232,7 +245,7 @@ class User:
 
             page += 1
 
-        return self._bars
+        return tuple(self._bars)
 
 
 class Bar:
@@ -293,3 +306,11 @@ class Bar:
                               total_sign=json_r['user_info']['total_sign_num'],
                               cont_sign=json_r['user_info']['cont_sign_num'],
                               rank=json_r['user_info']['user_sign_rank'])
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            raise TypeError('except {0}, got {1}'.format(type(self).__name__, type(other).__name__))
+        return self.kw == other.kw
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
