@@ -245,7 +245,7 @@ class User:
 
             page += 1
 
-        return self._bars
+        return tuple(self._bars)
 
 
 class Bar:

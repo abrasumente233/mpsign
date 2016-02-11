@@ -1,6 +1,13 @@
 MPSIGN
 ======
 
+需求
+----
+
+| MPSIGN 在 Python 3.5 的环境下开发，对 Python 3.x
+  其他版本的运行状况未知。1.5.2 的工作就是兼容测试。
+| 暂时没有兼容 2.x 的计划。
+
 安装
 ----
 
@@ -75,10 +82,12 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
        >>> [user.sign(bar) for bar in user.bars]
        ...a list of SignResult
 
-   注: 使用 ``user.bars`` 获取一群贴吧的 fid 比让 ``core.Bar``
-   单独获取快非常多。一个贴吧的 fid 通常是不变的，所以第一次最好把 fid
-   存起来，日后使用 ``Bar('name', 'fid')`` 获取 Bar
-   实例签到会省不少流量。MPSIGN 自带的命令行工具已经这么做了。
+   注: 签到需要四样东西：BDUSS，tbs，吧名和\ **对应贴吧的 fid**.
+   ``mpsign.core.Bar`` 有两种实例化的方法: Bar(kw, fid) 或 Bar(kw).
+   如果使用后者，访问 ``bar.fid`` 的时候会去单独获取该贴吧的
+   fid，贴吧多了之后流量消耗相当可观. 所以除非真的不知道 fid，
+   否则请使用第一种构造方法。有一种批量获取用户喜欢的吧 fid 的方法是使用
+   ``user.bars``\ ，返回的是一个由前者构造成的 Bar 的 tuple.
 
 -  检验 BDUSS 是否合法
 
@@ -134,4 +143,3 @@ MPSIGN
       --username            Your Baidu ID
       --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
-
