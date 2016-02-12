@@ -21,18 +21,17 @@ Options:
   --delay=<second>      Delay for every single bar [default: 3].
 
 """
-import time
-import threading
 import http.server
 import sys
-from os import path
+import threading
 from getpass import getpass
+from os import path
 
 from docopt import docopt
 from tinydb import TinyDB, where
 
-from .core import *
 from . import __version__
+from .core import *
 
 db = TinyDB(data_directory + path.sep + '.mpsigndb')
 user_table = db.table('users', cache_size=10)
@@ -44,10 +43,6 @@ class UserDuplicated(Exception):
 
 
 class UserNotFound(Exception):
-    pass
-
-
-class InvalidBDUSSException(Exception):
     pass
 
 
@@ -301,7 +296,7 @@ def login(username, password):
                         print('  {no}) {name} -- {desc}'.format(no=i+1, name=sel[0], desc=sel[2]))
                     choice = input('Your choice(1-{0}): '.format(len(selections)))
 
-                    user_input = selections[int(choice)-1][1](result).strip()  # pass the Captcha object
+                    user_input = selections[int(choice)-1][1](result)  # pass the Captcha object
 
                     result.destroy()
 

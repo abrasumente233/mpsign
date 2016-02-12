@@ -52,6 +52,15 @@ except:
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
+blank_pattern = re.compile(r'\s')
+
+
+class InvalidBDUSSException(Exception):
+    pass
+
+
+class InvalidBar(Exception):
+    pass
 
 
 class LoginFailure(Exception):
@@ -101,7 +110,9 @@ class Captcha:
         return self.image
 
     def fill(self, captcha):
-        self.input = captcha
+        if not isinstance(captcha, str):
+            raise TypeError('Captcha is a string, got {0}'.format(type(captcha).__name__))
+        self.input = captcha.strip()
 
     def destroy(self):
         try:
@@ -118,6 +129,8 @@ class Captcha:
 
 class User:
     def __init__(self, bduss):
+        if not isinstance(bduss, str) or bduss == '':
+            raise InvalidBDUSSException()
         self.bduss = bduss
         self._tbs = ''
         self._bars = []
@@ -155,10 +168,11 @@ class User:
 
                 captcha = Captcha(r_captcha.raw)
                 user_input = yield captcha
-                user_input = user_input or captcha.input
-                if user_input is None:
+                if user_input is not None:
+                    captcha.fill(user_input)  # user_input is no.1 priority
+                if captcha.input is None:
                     raise InvalidCaptcha(500002, 'Your captcha is wrong.')
-                elif user_input == 'another':
+                elif captcha.input == 'another':
                     continue
                 else:
                     break
@@ -250,8 +264,20 @@ class User:
 
 class Bar:
     def __init__(self, kw, fid=None):
+        if not isinstance(kw, str):
+            raise TypeError('bar name except a string, got {0}'.format(type(kw).__name__))
+
+        if blank_pattern.search(kw) or kw == '':
+            raise InvalidBar('there was blank in the bar name')
+
+        if fid is not None:
+            if not isinstance(fid, (str, int)):
+                raise TypeError('fid except a string or an int, got {0}'.format(type(fid).__name__))
+            self._fid = fid.strip() if isinstance(fid, str) else str(fid)
+        else:
+            self._fid = None
+
         self.kw = kw
-        self._fid = fid
 
     @cached_property
     def fid(self):
@@ -278,7 +304,7 @@ class Bar:
         sign_str = ''
 
         for k, v in post_data.items():
-            sign_str += '%s=%s' % (k, v)
+            sign_str += '{0}={1}'.format(k, v)
 
         sign_str += 'tiebaclient!!!'
         m = hashlib.md5()
