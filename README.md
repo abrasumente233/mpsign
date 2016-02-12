@@ -1,5 +1,5 @@
 
-# MPSIGN [![Build Status](https://travis-ci.org/abrasumente233/mpsign.svg?branch=master)](https://travis-ci.org/abrasumente233/mpsign)
+# MPSIGN [![Build Status](https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.2)](https://travis-ci.org/abrasumente233/mpsign)
 用 Python 实现的贴吧签到助手
 
 
