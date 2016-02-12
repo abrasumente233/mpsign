@@ -5,6 +5,7 @@ from mpsign import core
 
 captcha_path = os.path.join(os.path.dirname(__file__) + os.sep + 'captcha.gif')
 
+
 class TestCaptcha(unittest.TestCase):
 
     def test_release_properly(self):
