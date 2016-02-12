@@ -3,11 +3,12 @@ import os
 
 from mpsign import core
 
+captcha_path = os.path.join(os.path.dirname(__file__) + os.sep + 'captcha.gif')
 
 class TestCaptcha(unittest.TestCase):
 
     def test_release_properly(self):
-        captcha = core.Captcha(open('captcha.gif', 'rb'))
+        captcha = core.Captcha(open(captcha_path, 'rb'))
         captcha.as_file()
         self.assertTrue(os.path.exists(core.data_directory + os.sep + 'www' + os.sep + 'captcha.gif'))
         captcha.destroy()
@@ -15,7 +16,7 @@ class TestCaptcha(unittest.TestCase):
         self.assertTrue(captcha.get_image().closed)
 
     def test_custom_path_release_properly(self):
-        captcha = core.Captcha(open('captcha.gif', 'rb'))
+        captcha = core.Captcha(open(captcha_path, 'rb'))
         captcha.as_file('a.gif')
         self.assertTrue(os.path.exists('a.gif'))
         captcha.destroy()
@@ -23,7 +24,7 @@ class TestCaptcha(unittest.TestCase):
         self.assertTrue(captcha.get_image().closed)
 
     def test_fill(self):
-        captcha = core.Captcha(open('captcha.gif', 'rb'))
+        captcha = core.Captcha(open(captcha_path, 'rb'))
         captcha.fill('2szx')
         self.assertTrue(captcha.input, '2szx')
         captcha.destroy()
@@ -32,7 +33,7 @@ class TestCaptcha(unittest.TestCase):
 class TestCaptchaBadInput(unittest.TestCase):
 
     def test_not_str(self):
-        captcha = core.Captcha(open('captcha.gif', 'rb'))
+        captcha = core.Captcha(open(captcha_path, 'rb'))
         for case in (1, 2312, 239.2):
             self.assertRaises(TypeError, captcha.fill, (case,))
         captcha.destroy()
