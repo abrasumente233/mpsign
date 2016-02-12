@@ -1,7 +1,7 @@
-MPSIGN
-======
+MPSIGN |Build Status|
+=====================
 
-1.5.2 |Build Status| 用 Python 实现的贴吧签到助手
+用 Python 实现的贴吧签到助手
 
 需求
 ----
