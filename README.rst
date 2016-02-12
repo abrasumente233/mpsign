@@ -1,6 +1,8 @@
 MPSIGN
 ======
 
+1.5.2 |Build Status| 用 Python 实现的贴吧签到助手
+
 需求
 ----
 
@@ -143,3 +145,6 @@ MPSIGN
       --username            Your Baidu ID
       --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
+
+.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=master
+   :target: https://travis-ci.org/abrasumente233/mpsign
