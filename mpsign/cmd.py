@@ -33,7 +33,8 @@ from tinydb import TinyDB, where
 from . import __version__
 from .core import *
 
-db = TinyDB(data_directory + path.sep + '.mpsigndb')
+db_path = data_directory + path.sep + '.mpsigndb'
+db = TinyDB(db_path)
 user_table = db.table('users', cache_size=10)
 bar_table = db.table('bars')
 
@@ -343,46 +344,49 @@ def modify(*, name, bduss):
     user_table.update({'bduss': bduss}, where('name') == name)
 
 
-def cmd():
+def main():
     arguments = docopt(__doc__, version=__version__)
     if arguments['--delay'] is None:
         arguments['--delay'] = 3
 
-    try:
-
-        if arguments['new']:
-            if not arguments['--without-verifying']:
-                if not User(arguments['<bduss>']).verify():
-                    raise InvalidBDUSSException
-            new(name=arguments['<user>'], bduss=arguments['<bduss>'])
+    if arguments['new']:
+        if not arguments['--without-verifying']:
+            if not User(arguments['<bduss>']).verify():
+                raise InvalidBDUSSException
+        new(name=arguments['<user>'], bduss=arguments['<bduss>'])
+        update(name=arguments['<user>'])
+    elif arguments['login']:
+        password = getpass()
+        login(arguments['<username>'], password)
+    elif arguments['set']:
+        if not arguments['--without-verifying']:
+            if not User(arguments['<bduss>']).verify():
+                raise InvalidBDUSSException
+        modify(name=arguments['<user>'], bduss=arguments['<bduss>'])
+        print('ok')
+    elif arguments['delete']:
+        if arguments['<user>'] is None:
+            delete_all()
+        else:
+            delete(name=arguments['<user>'])
+    elif arguments['update']:
+        if arguments['<user>'] is None:
+            update_all()
+        else:
             update(name=arguments['<user>'])
-        elif arguments['login']:
-            password = getpass()
-            login(arguments['<username>'], password)
-        elif arguments['set']:
-            if not arguments['--without-verifying']:
-                if not User(arguments['<bduss>']).verify():
-                    raise InvalidBDUSSException
-            modify(name=arguments['<user>'], bduss=arguments['<bduss>'])
-            print('ok')
-        elif arguments['delete']:
-            if arguments['<user>'] is None:
-                delete_all()
-            else:
-                delete(name=arguments['<user>'])
-        elif arguments['update']:
-            if arguments['<user>'] is None:
-                update_all()
-            else:
-                update(name=arguments['<user>'])
-        elif arguments['sign']:
-            if arguments['<user>'] is None:
-                sign_all(delay=float(arguments['--delay']))
-            else:
-                sign(name=arguments['<user>'], delay=float(arguments['--delay']))
+    elif arguments['sign']:
+        if arguments['<user>'] is None:
+            sign_all(delay=float(arguments['--delay']))
+        else:
+            sign(name=arguments['<user>'], delay=float(arguments['--delay']))
 
-        elif arguments['info']:
-            info(name=arguments['<user>'])
+    elif arguments['info']:
+        info(name=arguments['<user>'])
+
+
+def cmd():
+    try:
+        main()
     except ImportError as e:
         # lxml or html5lib not found
         print(e.msg)
