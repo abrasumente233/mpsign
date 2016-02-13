@@ -301,14 +301,14 @@ class Bar:
         post_data['net_type'] = '3'
         post_data['tbs'] = user.tbs
 
-        sign_str = ''
+        sign_str = []
 
         for k, v in post_data.items():
-            sign_str += '{0}={1}'.format(k, v)
+            sign_str.append('{0}={1}'.format(k, v))
 
-        sign_str += 'tiebaclient!!!'
+        sign_str.append('tiebaclient!!!')
         m = hashlib.md5()
-        m.update(sign_str.encode('utf-8'))
+        m.update(''.join(sign_str).encode('utf-8'))
         sign_str = m.hexdigest().upper()
 
         post_data['sign'] = sign_str
