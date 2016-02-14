@@ -3,8 +3,8 @@
 """mpsign
 
 Usage:
-  mpsign login <username>
-  mpsign (new|set) <user> <bduss> [--without-verifying]
+  mpsign login <username> [--dont-update]
+  mpsign (new|set) <user> <bduss> [--without-verifying] [--dont-update]
   mpsign (delete|update) [<user>]
   mpsign sign [<user>] [--delay=<second>]
   mpsign info [<user>]
@@ -15,6 +15,7 @@ Options:
   -h --help             Show this screen.
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
+  --dont-update         Do not update your favorite bars after binding user
   --bduss               Your Baidu BDUSS.
   --username            Your Baidu ID
   --user                Your mpsign ID.
@@ -30,8 +31,8 @@ from os import path
 from docopt import docopt
 from tinydb import TinyDB, where
 
-from . import __version__
-from .core import *
+from mpsign import __version__
+from mpsign.core import *
 
 db_path = data_directory + path.sep + '.mpsigndb'
 db = TinyDB(db_path)
@@ -47,9 +48,20 @@ class UserNotFound(Exception):
     pass
 
 
+class DatabaseUser:
+    def __init__(self, name):
+        if not is_user_existed(name):
+            raise UserNotFound()
+        user_row = user_table.get(where('name') == name)
+        self.eid = user_row.eid
+        self.name = user_row['name']
+        self.exp = user_row['exp']
+        self.obj = User(user_row['bduss'])
+
+
 class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
 
-    def log_message(self, format, *args):
+    def log_message(self, log_format, *args):
         pass
 
     def do_GET(self):
@@ -69,7 +81,7 @@ class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
 def is_user_existed(name):
     field_existence = user_table.search(where('name').exists())
     if not field_existence:
-        raise UserNotFound
+        return False
 
     user_existence = user_table.search(where('name') == name)
     return True if len(user_existence) is 1 else False
@@ -80,134 +92,120 @@ def check_user_duplicated(name):
         raise UserDuplicated()
 
 
-def is_user_existed_dec(func):
-    def wrapper(*args, **kwargs):
-        if is_user_existed(kwargs['name']):
-            return func(*args, **kwargs)
-        else:
-            raise UserNotFound()
+def make_sure(message, default):
+    y = 'Y' if default else 'y'
+    n = 'N' if not default else 'n'
+    message = '{msg} {y}/{n}: '.format(msg=message, y=y, n=n)
+    while True:
 
-    return wrapper
-
-
-def sure(message, default):
-    decision = input(message).strip()
-    if decision == '':
-        return default
-    else:
-        return True if decision.lower() in ['y', 'yes', 'ok', 'ye'] \
-            else False
+        decision = input(message).strip()
+        if decision == '':
+            return default
+        elif decision.lower() in ['y', 'yes', 'ok', 'yea']:
+            return True
+        elif decision.lower() in ['n', 'no', 'nope']:
+            return False
 
 
 def delete_all():
-    is_continue = sure('Are you sure delete all accounts in the database? y/N:', False)
+    is_continue = make_sure('Are you sure delete all accounts in the database?', False)
     if not is_continue:
         return
-    users_info = user_table.all()
-    for user_info in user_table.all():
-        delete(name=user_info['name'])
-    print('done, {0} users are deleted.'.format(len(users_info)))
+    user_rows = user_table.all()
+    for user_row in user_rows:
+        delete(user=DatabaseUser(user_row['name']))
+    print('done, {0} users are deleted.'.format(len(user_rows)))
 
 
-@is_user_existed_dec
-def delete(*, name):
-    user_info = user_table.get(where('name') == name)
-    user_table.remove(where('name') == name)
-    bar_table.remove(where('user') == user_info.eid)
-    print('finished deleting {0}'.format(name))
+def delete(user):
+    user_table.remove(where('name') == user.name)
+    bar_table.remove(where('user') == user.eid)
+    print('finished deleting {0}'.format(user.name))
 
 
 def update_all():
     count = 0
-    for user_info in user_table.all():
-        count += update(name=user_info['name'])
+    for user_row in user_table.all():
+        count += update(DatabaseUser(user_row['name']))
     print('done, totally {0} bars was found!'.format(count))
 
 
-@is_user_existed_dec
-def update(*, name):
-    user_info = user_table.get(where('name') == name)
+def update(user):
+    bars = User(user.obj.bduss).bars
+    bars_as_list = []
 
-    bars = User(user_info['bduss']).bars
-    bars_in_list = []
-
-    # convert Bar objects to a list of dict that contains kw, fid, and user's eid
+    # 把 Bar 对象转换成一个含有多个 {kw: str, fid: str, eid: int} dict 的 list
     for bar in bars:
-        print('found {name}\'s bar {bar}'.format(bar=bar.kw, name=name))
-        bars_in_list.append({'kw': bar.kw, 'fid': bar.fid, 'user': user_info.eid})
+        print('found {name}\'s bar {bar}'.format(bar=bar.kw, name=user.name))
+        bars_as_list.append({'kw': bar.kw, 'fid': bar.fid, 'user': user.eid})
 
-    print('{name} has {count} bars.'.format(name=name, count=len(bars)))
-    bar_table.remove(where('user') == user_info.eid)  # clean old bars
-    bar_table.insert_multiple(bars_in_list)
+    print('{name} has {count} bars.'.format(name=user.name, count=len(bars)))
+    bar_table.remove(where('user') == user.eid)  # 删除以前的贴吧
+    bar_table.insert_multiple(bars_as_list)
     return len(bars)
 
 
 def sign_all(delay=None):
-    names = [user_info['name'] for user_info in user_table.all()]
+    user_instances = [DatabaseUser(user_row['name']) for user_row in user_table.all()]
     exp = 0
-    for name in names:
-        exp += sign(name=name, delay=delay)
+    for instance in user_instances:
+        exp += sign(instance, delay=delay)
 
     print('done. totally {exp} exp was got.'.format(exp=exp))
     return exp
 
 
-@is_user_existed_dec
-def sign(*, name, delay=None):
-    user_info = user_table.get(where('name') == name)
-    bars_info = bar_table.search(where('user') == user_info.eid)
+def sign(user, delay=None):
+    bar_rows = bar_table.search(where('user') == user.eid)
     exp = 0
 
-    for bar_info in bars_info:
-        exp += sign_bar(name=name, kw=bar_info['kw'], fid=bar_info['fid'])
+    for bar_row in bar_rows:
+        exp += sign_bar(user, Bar(bar_row['kw'], bar_row['fid']))
         if delay is not None:
             time.sleep(delay)
 
-    print('{name}\'s {count} bars was signed, exp +{exp}.'.format(name=name, count=len(bars_info),
+    print('{name}\'s {count} bars was signed, exp +{exp}.'.format(name=user.name, count=len(bar_rows),
                                                                   exp=exp))
     return exp
 
 
-@is_user_existed_dec
-def sign_bar(*, name, kw, fid):
-    user_info = user_table.get(where('name') == name)
-    user_obj = User(user_info['bduss'])
-    r = Bar(kw, fid).sign(user_obj)
+def sign_bar(user, bar):
+    r = bar.sign(user.obj)
     if r.code == 0:
-        print('{name} - {bar}: exp +{exp}'.format(name=name, bar=r.bar.kw, exp=r.exp))
+        print('{name} - {bar}: exp +{exp}'.format(name=user.name, bar=r.bar.kw, exp=r.exp))
     else:
-        print('{name} - {bar}:{code}: {msg}'.format(name=name, bar=r.bar.kw, code=r.code,
+        print('{name} - {bar}:{code}: {msg}'.format(name=user.name, bar=r.bar.kw, code=r.code,
                                                     msg=r.message))
 
-    old_exp = user_table.get(where('name') == name)['exp']
-    user_table.update({'exp': old_exp + r.exp}, where('name') == name)
+    past_exp = user_table.get(where('name') == user.name)['exp']
+    user_table.update({'exp': past_exp + r.exp}, where('name') == user.name)
     return r.exp
 
 
-def info(*, name=None):
+def info(name=None):
     if name is None:
-        users_info = user_table.all()
+        user_rows = user_table.all()
     else:
-        users_info = [user_table.get(where('name') == name)]
+        user_rows = [user_table.get(where('name') == name)]
 
-    if len(users_info) == 0:
+    if len(user_rows) == 0:
         print('No user yet.')
         return
 
-    if users_info[0] is None:
+    if user_rows[0] is None:
         raise UserNotFound
 
     row_format = '{:>15}{:>15}{:>20}'
 
     print(row_format.format('Name', 'EXP', 'is BDUSS valid'))
 
-    for user_info in users_info:
-        print(row_format.format(user_info['name'],
-                                user_info['exp'],
-                                str(User(user_info['bduss']).verify())))
+    for user_row in user_rows:
+        print(row_format.format(user_row['name'],
+                                user_row['exp'],
+                                str(User(user_row['bduss']).validation)))
 
 
-def new(*, name, bduss):
+def new(name, bduss):
     check_user_duplicated(name)
     user_table.insert({'name': name, 'bduss': bduss, 'exp': 0})
 
@@ -278,7 +276,7 @@ def via_http(captcha):
     return user_input
 
 
-def login(username, password):
+def login(username, password, need_update=True):
     while True:
         user_gen = User.login(username, password)
 
@@ -315,13 +313,18 @@ def login(username, password):
             while True:
                 try:
                     user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
-                    new(name=user_id, bduss=user.bduss)
+                    new(user_id, user.bduss)
                     break
                 except UserDuplicated:
-                    print('duplicated username {0}, please pick another one.'.format(user_id))
+                    print('{0} is already EXISTED in the database!!!'.format(user_id))
+                    override = make_sure('Do you hope to override it?', False)
+                    if override:
+                        modify(DatabaseUser(user_id), user.bduss)
+                        break
 
-            print('Fetching your favorite bars...')
-            update(name=user_id)
+            if need_update:
+                print('Fetching your favorite bars...')
+                update(DatabaseUser(user_id))
             print('It\'s all done!')
             break
 
@@ -339,59 +342,70 @@ def login(username, password):
             break
 
 
-@is_user_existed_dec
-def modify(*, name, bduss):
-    user_table.update({'bduss': bduss}, where('name') == name)
+def modify(user, bduss):
+    user_table.update({'bduss': bduss}, where('name') == user.name)
 
 
-def main():
-    arguments = docopt(__doc__, version=__version__)
+def main(arguments):
+
     if arguments['--delay'] is None:
         arguments['--delay'] = 3
 
     if arguments['new']:
         if not arguments['--without-verifying']:
-            if not User(arguments['<bduss>']).verify():
+            if not User(arguments['<bduss>']).validation:
                 raise InvalidBDUSSException
-        new(name=arguments['<user>'], bduss=arguments['<bduss>'])
-        update(name=arguments['<user>'])
+        new(arguments['<user>'], arguments['<bduss>'])
+        if not arguments['--dont-update']:
+            print('Fetching your favorite bars...')
+            update(user=DatabaseUser(arguments['<user>']))
     elif arguments['login']:
         password = getpass()
-        login(arguments['<username>'], password)
+        login(arguments['<username>'], password, not arguments['--dont-update'])
     elif arguments['set']:
+
+        # 验证 BDUSS
         if not arguments['--without-verifying']:
-            if not User(arguments['<bduss>']).verify():
+            if not User(arguments['<bduss>']).validation:
                 raise InvalidBDUSSException
-        modify(name=arguments['<user>'], bduss=arguments['<bduss>'])
+
+        user = DatabaseUser(arguments['<user>'])
+        modify(user, arguments['<bduss>'])
+
+        # 更新贴吧
+        if not arguments['--dont-update']:
+            print('Fetching your favorite bars...')
+            update(user)
+
         print('ok')
     elif arguments['delete']:
         if arguments['<user>'] is None:
             delete_all()
         else:
-            delete(name=arguments['<user>'])
+            delete(user=DatabaseUser(arguments['<user>']))
     elif arguments['update']:
         if arguments['<user>'] is None:
             update_all()
         else:
-            update(name=arguments['<user>'])
+            update(user=DatabaseUser(arguments['<user>']))
     elif arguments['sign']:
         if arguments['<user>'] is None:
             sign_all(delay=float(arguments['--delay']))
         else:
-            sign(name=arguments['<user>'], delay=float(arguments['--delay']))
+            sign(user=DatabaseUser(arguments['<user>']), delay=float(arguments['--delay']))
 
     elif arguments['info']:
-        info(name=arguments['<user>'])
+        info(arguments['<user>'])
 
 
 def cmd():
     try:
-        main()
+        main(docopt(__doc__, version=__version__))
     except ImportError as e:
         # lxml or html5lib not found
         print(e.msg)
         print('Please try again by using `mpsign update [user]`')
-    except UserNotFound:
+    except UserNotFound as e:
         print('User not found.')
     except InvalidBDUSSException:
         print('BDUSS not valid')

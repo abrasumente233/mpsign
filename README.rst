@@ -96,7 +96,7 @@ MPSIGN 的所有核心功能均在 ``mpsign.core`` 模块下。以下是一些�
    .. code:: python
 
        >>> from mpsign.core import User
-       >>> User('AN INVALID BDUSS').verify()
+       >>> User('AN INVALID BDUSS').validation
        False
 
 -  TBS

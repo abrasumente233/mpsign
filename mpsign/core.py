@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-from .crypto import rsa_encrypt
+from mpsign.crypto import rsa_encrypt
 
 RSA_PUB_KEY = '010001'
 RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
@@ -131,9 +131,14 @@ class User:
     def __init__(self, bduss):
         if not isinstance(bduss, str) or bduss == '':
             raise InvalidBDUSSException()
-        self.bduss = bduss
+        self._bduss = bduss
+        self._validation = None
         self._tbs = ''
         self._bars = []
+
+    @property
+    def bduss(self):
+        return self._bduss
 
     def sign(self, bar):
         return bar.sign(self)
@@ -204,7 +209,8 @@ class User:
         else:
             raise LoginFailure(status, message)
 
-    def verify(self):
+    @cached_property
+    def validation(self):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Linux; U; Android 4.1.2; zh-cn; MB526 Build/JZO54K)'
                           ' AppleWebKit/530.17 (KHTML, like Gecko) FlyFlow/2.4 Version/4.0'
@@ -216,7 +222,9 @@ class User:
         r = requests.get('http://tieba.baidu.com/dc/common/tbs',
                          headers=headers, cookies={'BDUSS': self.bduss})
 
-        return bool(r.json()['is_login'])
+        is_valid = bool(r.json()['is_login'])
+        self._validation = is_valid
+        return is_valid
 
     @cached_property
     def tbs(self):
@@ -229,6 +237,11 @@ class User:
                                       'Referer': 'http://tieba.baidu.com/'},
                              cookies={'BDUSS': self.bduss})
 
+        is_valid = bool(tbs_r.json()['is_login'])
+        self._validation = is_valid
+        if not is_valid:
+            raise InvalidBDUSSException()
+
         self._tbs = tbs_r.json()['tbs']
         return self._tbs
 
@@ -236,6 +249,12 @@ class User:
     def bars(self):
         if parser is None:
             raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
+
+        if self._validation is False:
+            raise InvalidBDUSSException()
+        elif self._validation is None:
+            if not self.validation:
+                raise InvalidBDUSSException()
 
         page = 1
         while True:
@@ -288,6 +307,9 @@ class Bar:
             return self._fid
 
     def sign(self, user):
+
+        if not user.validation:
+            raise InvalidBDUSSException()
 
         # BY KK!!!! https://ikk.me
         post_data = OrderedDict()

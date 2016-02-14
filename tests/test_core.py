@@ -5,6 +5,9 @@ from mpsign import core
 
 captcha_path = os.path.join(os.path.dirname(__file__) + os.sep + 'captcha.gif')
 
+if captcha_path == '\\captcha.gif':
+    captcha_path = 'captcha.gif'
+
 
 class TestCaptcha(unittest.TestCase):
 
@@ -81,10 +84,26 @@ class TestBarBadInput(unittest.TestCase):
 
 class TestUserBadInput(unittest.TestCase):
 
-    def test_invalid_bduss(self):
+    def test_invalid_bduss_when_creation(self):
         for bad in ('', 23122312, 0xff, 23.3):
             with self.assertRaises(core.InvalidBDUSSException):
                 core.User(bad)
+
+    def test_invalid_bduss_getting_tbs(self):
+        u = core.User('invalid_bduss')
+        with self.assertRaises(core.InvalidBDUSSException):
+            tbs = u.tbs
+
+    def test_invalid_bduss_getting_bars(self):
+        u = core.User('invalid_bduss')
+        with self.assertRaises(core.InvalidBDUSSException):
+            bars = u.bars
+
+    def test_invalid_bduss_sign(self):
+        bar = core.Bar('chrome', 1074587)
+        u = core.User('invalid_bduss')
+        with self.assertRaises(core.InvalidBDUSSException):
+            u.sign(bar)
 
 if __name__ == '__main__':
     unittest.main()
