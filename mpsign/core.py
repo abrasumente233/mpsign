@@ -52,6 +52,7 @@ except:
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
+resend_url_pattern = re.compile(r'(?<=send_url = ).+(?=")')
 blank_pattern = re.compile(r'\s')
 
 
@@ -114,6 +115,9 @@ class Captcha:
             raise TypeError('Captcha is a string, got {0}'.format(type(captcha).__name__))
         self.input = captcha.strip()
 
+    def another(self):
+        self.input = 'another'
+
     def destroy(self):
         try:
             if self.path is not None:
@@ -125,6 +129,23 @@ class Captcha:
             self.image.close()
         except:
             pass
+
+
+class EmailCaptcha:
+    def __init__(self, email_address):
+        self.email_address = email_address
+        self.input = None
+
+    def resend(self):
+        self.input = 'another'
+
+    def fill(self, captcha):
+        if not isinstance(captcha, str):
+            raise TypeError('Captcha is a string, got {0}'.format(type(captcha).__name__))
+        self.input = captcha
+
+    def reset(self):
+        self.input = None
 
 
 class User:
@@ -145,6 +166,9 @@ class User:
 
     @classmethod
     def login(cls, username, password):
+        if parser is None:
+            raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
+
         s = requests.Session()
 
         # get a BAIDUID or it will present me "Please enable cookies"
@@ -180,7 +204,7 @@ class User:
                 elif captcha.input == 'another':
                     continue
                 else:
-                    break
+                    break  # todo: ?
 
             payload['vcodestr'] = vcodestr
             payload['verifycode'] = user_input
@@ -190,7 +214,53 @@ class User:
 
         data = r.json()
         status = data['errInfo']['no']
+
+        if status == '400101':
+            email_auth_url = data['data']['gotoUrl']
+            email_auth_response = s.get(email_auth_url)
+            soup = BeautifulSoup(email_auth_response.text, parser)
+            email_address = soup.find(class_='mod-page-tipUsername').get_text()
+            resend_url = resend_url_pattern.search(email_auth_response.text).group()
+
+            token = soup.find(name='')['value']
+
+            email_captcha = EmailCaptcha(email_address)
+            while True:
+                user_input = yield email_captcha
+                if user_input is not None:
+                    email_captcha.fill(user_input)
+                if email_captcha.input is None:
+                    raise TypeError('except a str, got None')
+                elif email_captcha.input == 'another':
+                    email_time = str(int(time.time()))
+                    s.get('https://wappass.baidu.com{0}{1}'.format(resend_url, email_time))
+                    email_captcha.reset()
+                    continue
+
+                check_time = str(int(time.time()))
+                pending_data = {
+                    'token': token,
+                    'v': str(int(time.time())),
+                    'vcode': email_captcha.input,
+                    'action': 'check',
+                    'type': 'email'
+                }
+
+                r = s.post('http://wappass.baidu.com/passport/authwidget&v={0}'.format(check_time),
+                           data=pending_data)
+
+                # todo: no done yet.
+
+        data = r.json()
+        status = data['errInfo']['no']
         message = data['errInfo']['msg']
+
+        print(data)
+        try:
+            print(s.cookies['BDUSS'])
+        except KeyError:
+
+            print('no bduss')
 
         if status == '0':
             yield cls(data['data']['bduss'])
@@ -204,8 +274,6 @@ class User:
             # 400010 unexisting user
             # 230048 just invalid because of the format
             raise InvalidUsername(int(status), message)
-        elif status == '400101':
-            raise LoginFailure(400101, 'Email authentication is needed. Use BDUSS instead.')
         else:
             raise LoginFailure(status, message)
 
