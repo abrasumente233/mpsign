@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from cached_property import cached_property
 
-from .crypto import rsa_encrypt
+from mpsign.crypto import rsa_encrypt
 
 RSA_PUB_KEY = '010001'
 RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
@@ -52,6 +52,15 @@ except:
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
+blank_pattern = re.compile(r'\s')
+
+
+class InvalidBDUSSException(Exception):
+    pass
+
+
+class InvalidBar(Exception):
+    pass
 
 
 class LoginFailure(Exception):
@@ -101,7 +110,9 @@ class Captcha:
         return self.image
 
     def fill(self, captcha):
-        self.input = captcha
+        if not isinstance(captcha, str):
+            raise TypeError('Captcha is a string, got {0}'.format(type(captcha).__name__))
+        self.input = captcha.strip()
 
     def destroy(self):
         try:
@@ -118,9 +129,16 @@ class Captcha:
 
 class User:
     def __init__(self, bduss):
-        self.bduss = bduss
+        if not isinstance(bduss, str) or bduss == '':
+            raise InvalidBDUSSException()
+        self._bduss = bduss
+        self._validation = None
         self._tbs = ''
         self._bars = []
+
+    @property
+    def bduss(self):
+        return self._bduss
 
     def sign(self, bar):
         return bar.sign(self)
@@ -155,10 +173,11 @@ class User:
 
                 captcha = Captcha(r_captcha.raw)
                 user_input = yield captcha
-                user_input = user_input or captcha.input
-                if user_input is None:
+                if user_input is not None:
+                    captcha.fill(user_input)  # user_input is no.1 priority
+                if captcha.input is None:
                     raise InvalidCaptcha(500002, 'Your captcha is wrong.')
-                elif user_input == 'another':
+                elif captcha.input == 'another':
                     continue
                 else:
                     break
@@ -190,7 +209,8 @@ class User:
         else:
             raise LoginFailure(status, message)
 
-    def verify(self):
+    @cached_property
+    def validation(self):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Linux; U; Android 4.1.2; zh-cn; MB526 Build/JZO54K)'
                           ' AppleWebKit/530.17 (KHTML, like Gecko) FlyFlow/2.4 Version/4.0'
@@ -202,7 +222,9 @@ class User:
         r = requests.get('http://tieba.baidu.com/dc/common/tbs',
                          headers=headers, cookies={'BDUSS': self.bduss})
 
-        return bool(r.json()['is_login'])
+        is_valid = bool(r.json()['is_login'])
+        self._validation = is_valid
+        return is_valid
 
     @cached_property
     def tbs(self):
@@ -215,6 +237,11 @@ class User:
                                       'Referer': 'http://tieba.baidu.com/'},
                              cookies={'BDUSS': self.bduss})
 
+        is_valid = bool(tbs_r.json()['is_login'])
+        self._validation = is_valid
+        if not is_valid:
+            raise InvalidBDUSSException()
+
         self._tbs = tbs_r.json()['tbs']
         return self._tbs
 
@@ -222,6 +249,12 @@ class User:
     def bars(self):
         if parser is None:
             raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
+
+        if self._validation is False:
+            raise InvalidBDUSSException()
+        elif self._validation is None:
+            if not self.validation:
+                raise InvalidBDUSSException()
 
         page = 1
         while True:
@@ -250,8 +283,20 @@ class User:
 
 class Bar:
     def __init__(self, kw, fid=None):
+        if not isinstance(kw, str):
+            raise TypeError('bar name except a string, got {0}'.format(type(kw).__name__))
+
+        if blank_pattern.search(kw) or kw == '':
+            raise InvalidBar('there was blank in the bar name')
+
+        if fid is not None:
+            if not isinstance(fid, (str, int)):
+                raise TypeError('fid except a string or an int, got {0}'.format(type(fid).__name__))
+            self._fid = fid.strip() if isinstance(fid, str) else str(fid)
+        else:
+            self._fid = None
+
         self.kw = kw
-        self._fid = fid
 
     @cached_property
     def fid(self):
@@ -262,6 +307,9 @@ class Bar:
             return self._fid
 
     def sign(self, user):
+
+        if not user.validation:
+            raise InvalidBDUSSException()
 
         # BY KK!!!! https://ikk.me
         post_data = OrderedDict()
@@ -275,14 +323,14 @@ class Bar:
         post_data['net_type'] = '3'
         post_data['tbs'] = user.tbs
 
-        sign_str = ''
+        sign_str = []
 
         for k, v in post_data.items():
-            sign_str += '%s=%s' % (k, v)
+            sign_str.append('{0}={1}'.format(k, v))
 
-        sign_str += 'tiebaclient!!!'
+        sign_str.append('tiebaclient!!!')
         m = hashlib.md5()
-        m.update(sign_str.encode('utf-8'))
+        m.update(''.join(sign_str).encode('utf-8'))
         sign_str = m.hexdigest().upper()
 
         post_data['sign'] = sign_str

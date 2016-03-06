@@ -49,10 +49,10 @@ def rsa_encrypt(text, n, e):
     impl = RSAImplementation()
     n = int(n, 16) if isinstance(n, str) else n
     e = int(e, 16) if isinstance(e, str) else e
-    private_key = impl.construct((n, e))
+    public_key = impl.construct((n, e))
 
     # 这里的2其实是随便填的，pycrypto 会忽略掉。他这样做是为了兼容性考虑
     # 还有[0]是因为 encrypt() 返回的是一个 tuple，第一个元素为结果，第二个始终为 None, 具体看 pycrypto 的文档
-    result = private_key.encrypt(encrypt_string(private_key, text), 2)[0]
+    result = public_key.encrypt(encrypt_string(public_key, text), 2)[0]
 
     return dec2hex(result)

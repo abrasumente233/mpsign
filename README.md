@@ -1,5 +1,6 @@
 
-# MPSIGN
+# MPSIGN [![Build Status](https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.2)](https://travis-ci.org/abrasumente233/mpsign)
+用 Python 实现的贴吧签到助手
 
 
 ## 需求 
@@ -83,7 +84,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 
 	```python
 	>>> from mpsign.core import User
-	>>> User('AN INVALID BDUSS').verify()
+	>>> User('AN INVALID BDUSS').validation
 	False
 	```
 * TBS
