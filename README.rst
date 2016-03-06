@@ -146,5 +146,5 @@ MPSIGN
       --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
 
-.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.2
+.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.3
    :target: https://travis-ci.org/abrasumente233/mpsign
