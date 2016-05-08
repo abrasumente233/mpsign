@@ -3,13 +3,6 @@ MPSIGN |Build Status|
 
 用 Python 实现的贴吧签到助手
 
-需求
-----
-
-| MPSIGN 在 Python 3.5 的环境下开发，对 Python 3.x
-  其他版本的运行状况未知。1.5.2 的工作就是兼容测试。
-| 暂时没有兼容 2.x 的计划。
-
 安装
 ----
 
@@ -146,5 +139,5 @@ MPSIGN
       --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
 
-.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.3
+.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.6.0
    :target: https://travis-ci.org/abrasumente233/mpsign
