@@ -19,6 +19,8 @@ RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA4964
 
 data_directory = os.path.expanduser('~' + os.path.sep + '.mpsign')
 
+timeout = 5
+
 # detect parser for BeautifulSoup
 try:
     import lxml
@@ -220,7 +222,7 @@ class User:
             'Referer': 'http://tieba.baidu.com'
         }
         r = requests.get('http://tieba.baidu.com/dc/common/tbs',
-                         headers=headers, cookies={'BDUSS': self.bduss})
+                         headers=headers, cookies={'BDUSS': self.bduss}, timeout=timeout)
 
         is_valid = bool(r.json()['is_login'])
         self._validation = is_valid
@@ -235,7 +237,8 @@ class User:
                                                     '_diordna_458_084/alorotoM_61_2.1.4_625BM/1200a/39668C8F770'
                                                     '34455D4DED02169F3F7C7%7C132773740707453/1',
                                       'Referer': 'http://tieba.baidu.com/'},
-                             cookies={'BDUSS': self.bduss})
+                             cookies={'BDUSS': self.bduss},
+                             timeout=timeout)
 
         is_valid = bool(tbs_r.json()['is_login'])
         self._validation = is_valid
@@ -260,7 +263,8 @@ class User:
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),
                              headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                             cookies={'BDUSS': self.bduss})
+                             cookies={'BDUSS': self.bduss},
+                             timeout=timeout)
 
             r.encoding = 'gbk'
 
@@ -301,7 +305,7 @@ class Bar:
     @cached_property
     def fid(self):
         if self._fid is None:
-            r = requests.get('http://tieba.baidu.com/f/like/level?kw={}'.format(self.kw))
+            r = requests.get('http://tieba.baidu.com/f/like/level?kw={}'.format(self.kw), timeout=timeout)
             return fid_pattern.search(r.text).group()
         else:
             return self._fid
@@ -341,7 +345,8 @@ class Bar:
                                                  ' Profile/MIDP-2.1 Configuration/CLDC-1.1 ) '
                                                  'AppleWebKit/525 (KHTML, like Gecko) Version/3.0 BrowserNG/7.1.16352'},
                           cookies={'BDUSS': user.bduss},
-                          data=post_data)
+                          data=post_data,
+                          timeout=timeout)
 
         json_r = r.json()
 
