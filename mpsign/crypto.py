@@ -24,7 +24,8 @@ def encrypt_string(key, string):
         int(len(n_in_hex) / 2) + 1 - 2
 
     # 让 char_list 的长度变成 chunk_size 的倍数
-    char_list = char_list + [0 for _ in range(len(char_list) % chunk_size)]
+    while len(char_list) % chunk_size is not 0:
+        char_list.append(0)
 
     char_list_length = len(char_list)
     result = []  # 16进制表示的结果, 稍后再拼接成字符串
