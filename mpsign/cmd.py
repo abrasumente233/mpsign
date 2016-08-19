@@ -32,9 +32,10 @@ from docopt import docopt
 from tinydb import TinyDB, where
 
 from mpsign import __version__
+from mpsign.const import DATA_DIR
 from mpsign.core import *
 
-db_path = data_directory + path.sep + '.mpsigndb'
+db_path = DATA_DIR + path.sep + '.mpsigndb'
 db = TinyDB(db_path)
 user_table = db.table('users', cache_size=10)
 bar_table = db.table('bars')
@@ -66,7 +67,7 @@ class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """Serve a GET request."""
-        captcha_file = open('{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=path.sep),
+        captcha_file = open('{d}{sep}www{sep}captcha.gif'.format(d=DATA_DIR, sep=path.sep),
                                  'rb')
         self.send_response(200)
         self.send_header("Content-type", 'image/gif')
@@ -258,11 +259,11 @@ class HTTPThread(threading.Thread):
 
 def via_http(captcha):
     try:
-        os.mkdir('{d}{sep}www'.format(d=data_directory, sep=path.sep))
+        os.mkdir('{d}{sep}www'.format(d=DATA_DIR, sep=path.sep))
     except Exception:
         pass
 
-    captcha.as_file('{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=path.sep))
+    captcha.as_file('{d}{sep}www{sep}captcha.gif'.format(d=DATA_DIR, sep=path.sep))
 
     t = HTTPThread(8823, captcha)
     t.start()
