@@ -248,7 +248,7 @@ def login(username, password, need_update=True):
                               ('via http', via_http, 'serve the captcha image via http'))
 
                 while True:
-                    print('Captcha is needed, how do you want to view it?')
+                    print('Captcha required, how do you want to view it?')
 
                     for i, sel in enumerate(selections):
                         print('  {no}) {name} -- {desc}'.format(no=i+1, name=sel[0], desc=sel[2]))
@@ -271,12 +271,12 @@ def login(username, password, need_update=True):
             print('Only a few things left to do...')
             while True:
                 try:
-                    user_id = input('Pick up a username(only saved in mpsign\'s local database) you like: ')
+                    user_id = input('Pick up a username(feel free) you like: ')
                     new(user_id, user.bduss)
                     break
                 except UserDuplicated:
-                    print('{0} is already EXISTED in the database!!!'.format(user_id))
-                    override = make_sure('Do you hope to override it?', False)
+                    print('{0} is already EXISTENT in the database!!!'.format(user_id))
+                    override = make_sure('Do you wanna override it?', False)
                     if override:
                         modify(DatabaseUser(user_id), user.bduss)
                         break
