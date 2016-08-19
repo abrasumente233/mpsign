@@ -36,11 +36,11 @@ class Captcha:
     def as_file(self, path=None):
         if path is None:
             try:
-                os.mkdir('{d}{s}www'.format(d=data_directory, s=os.sep))
+                os.mkdir('{d}{s}www'.format(d=DATA_DIR, s=os.sep))
             except:
                 pass
 
-            self.path = '{d}{s}www{s}captcha.gif'.format(d=data_directory, s=os.sep)
+            self.path = '{d}{s}www{s}captcha.gif'.format(d=DATA_DIR, s=os.sep)
         else:
             self.path = path
 
