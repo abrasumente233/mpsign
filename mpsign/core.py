@@ -3,7 +3,6 @@ import os
 import time
 import re
 import hashlib
-import json
 from collections import OrderedDict, namedtuple
 
 import requests
