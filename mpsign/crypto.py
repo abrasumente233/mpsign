@@ -19,13 +19,12 @@ def encrypt_string(key, string):
     n_in_hex = dec2hex(key.n)
 
     # TODO: 这条语句的意思待解
-    # TODO: else 后面的表达式是不是有效的也待检...
+    # 好吧后面是无效的 qwq
     chunk_size = int((len(n_in_hex) / 2)) - 2 if len(n_in_hex) % 4 is 0 else \
         int(len(n_in_hex) / 2) + 1 - 2
 
     # 让 char_list 的长度变成 chunk_size 的倍数
-    while len(char_list) % chunk_size is not 0:
-        char_list.append(0)
+    char_list = char_list + [0 for _ in range(len(char_list) % chunk_size)]
 
     char_list_length = len(char_list)
     result = []  # 16进制表示的结果, 稍后再拼接成字符串
@@ -37,9 +36,6 @@ def encrypt_string(key, string):
             result.insert(0, dec2hex(current_number))
             j += 2
 
-        # 原 RSA.js 实现中每个 chunk 后面都有一个空格
-        # 即在这里 result += ' '
-        # 但为了简化设计，这里没加，而且密码那点长度也不会破出一个 chunk (似乎是126)
         i += chunk_size
 
     return int(''.join(result), 16)  # 把16进制表示的 result 转换成 int
@@ -51,8 +47,7 @@ def rsa_encrypt(text, n, e):
     e = int(e, 16) if isinstance(e, str) else e
     public_key = impl.construct((n, e))
 
-    # 这里的2其实是随便填的，pycrypto 会忽略掉。他这样做是为了兼容性考虑
-    # 还有[0]是因为 encrypt() 返回的是一个 tuple，第一个元素为结果，第二个始终为 None, 具体看 pycrypto 的文档
-    result = public_key.encrypt(encrypt_string(public_key, text), 2)[0]
+    random_number = 2  # 随便填
+    result, shit = public_key.encrypt(encrypt_string(public_key, text), random_number)
 
     return dec2hex(result)
