@@ -143,5 +143,5 @@ MPSIGN 自带一个命令行工具！配合 Cron 食用效！果！更！佳！(
       --user                Your mpsign ID.
       --delay=<second>      Delay for every single bar [default: 3].
 
-.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=1.5.3
+.. |Build Status| image:: https://travis-ci.org/abrasumente233/mpsign.svg?branch=master
    :target: https://travis-ci.org/abrasumente233/mpsign
