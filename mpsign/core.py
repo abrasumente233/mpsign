@@ -10,81 +10,21 @@ from bs4 import BeautifulSoup
 from cached_property import cached_property
 
 from mpsign.crypto import rsa_encrypt
+from mpsign.util import select_package
+from mpsign.const import *
+from mpsign.exceptions import *
 
-RSA_PUB_KEY = '010001'
-RSA_MODULUS = 'B3C61EBBA4659C4CE3639287EE871F1F48F7930EA977991C7AFE3CC442FEA49643212' \
-              'E7D570C853F368065CC57A2014666DA8AE7D493FD47D171C0D894EEE3ED7F99F6798B7F' \
-              'FD7B5873227038AD23E3197631A8CB642213B9F27D4901AB0D92BFA27542AE89085539' \
-              '6ED92775255C977F5C302F1E7ED4B1E369C12CB6B1822F'
+# 给 BeautifulSoup 相一个 parser
+parser = select_package(('lxml', 'html5lib'))
 
-data_directory = os.path.expanduser('~' + os.path.sep + '.mpsign')
-
-timeout = 5
-
-# detect parser for BeautifulSoup
 try:
-    import lxml
-    parser = 'lxml'
-    del lxml
-except ImportError:
-    try:
-        import html5lib
-        parser = 'html5lib'
-        del html5lib
-    except ImportError:
-        parser = None
-
-try:  # move old files
-    if os.path.isfile(data_directory):  # 1.4 -- 1.5
-        os.rename(data_directory, os.path.expanduser('~') + os.sep + '.mpsignbak')
-        try:
-            os.mkdir(data_directory)
-        except Exception:
-            pass
-        os.rename(os.path.expanduser('~') + os.sep + '.mpsignbak',
-                  data_directory + os.sep + '.mpsigndb')
-    else:  # new to mpsign 1.5
-        try:
-            os.mkdir(data_directory)
-        except Exception:
-            pass
-except:
+    os.makedirs(DATA_DIR)
+except Exception:
     pass
-
 
 SignResult = namedtuple('SignResult', ['message', 'exp', 'bar', 'code', 'total_sign', 'rank', 'cont_sign'])
 fid_pattern = re.compile(r"(?<=forum_id': ')\d+")
 blank_pattern = re.compile(r'\s')
-
-
-class InvalidBDUSSException(Exception):
-    pass
-
-
-class InvalidBar(Exception):
-    pass
-
-
-class LoginFailure(Exception):
-    def __init__(self, code, message):
-        self.code = code
-        self.message = message
-
-
-class InvalidPassword(LoginFailure):
-    pass
-
-
-class InvalidCaptcha(LoginFailure):
-    pass
-
-
-class InvalidUsername(LoginFailure):
-    pass
-
-
-class DangerousEnvironment(LoginFailure):
-    pass
 
 
 class Captcha:
@@ -96,11 +36,11 @@ class Captcha:
     def as_file(self, path=None):
         if path is None:
             try:
-                os.mkdir('{d}{sep}www'.format(d=data_directory, sep=os.sep))
+                os.mkdir('{d}{s}www'.format(d=data_directory, s=os.sep))
             except:
                 pass
 
-            self.path = '{d}{sep}www{sep}captcha.gif'.format(d=data_directory, sep=os.sep)
+            self.path = '{d}{s}www{s}captcha.gif'.format(d=data_directory, s=os.sep)
         else:
             self.path = path
 
@@ -135,8 +75,6 @@ class User:
             raise InvalidBDUSSException()
         self._bduss = bduss
         self._validation = None
-        self._tbs = ''
-        self._bars = []
 
     @property
     def bduss(self):
@@ -149,10 +87,11 @@ class User:
     def login(cls, username, password):
         s = requests.Session()
 
-        # get a BAIDUID or it will present me "Please enable cookies"
+        # 随便访问一个网址来获得一个 SESSION ID (BAIDUID)
+        # 否则会提示你 请开启 Cookie
         s.get('http://wappass.baidu.com/passport/?login')
 
-        timestamp = str(int(time.time()))
+        timestamp = str(int(time.time())) # 当前时间 精确到秒
 
         payload = {
             'loginmerge': '1',
@@ -160,15 +99,15 @@ class User:
             'username': username,
             'password': rsa_encrypt(password + timestamp,
                                     RSA_MODULUS, RSA_PUB_KEY),
-            'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'
+            'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'  # 随便取
         }
 
         r = s.post('http://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
                    data=payload)
 
-        # see if captcha is needed
+        # 是否需要验证码
         vcodestr = r.json()['data']['codeString']
-        if not vcodestr == '':
+        if vcodestr:
             while True:
                 r_captcha = s.get('http://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
                                   stream=True)
@@ -176,9 +115,13 @@ class User:
                 captcha = Captcha(r_captcha.raw)
                 user_input = yield captcha
                 if user_input is not None:
-                    captcha.fill(user_input)  # user_input is no.1 priority
+                    # 支持两种方式填验证码：
+                    # 1. captcha.fill(somecaptcha)
+                    # 2. gen.send(somecaptcha)
+                    # 如果都填有，优先采用第二种
+                    captcha.fill(user_input)
                 if captcha.input is None:
-                    raise InvalidCaptcha(500002, 'Your captcha is wrong.')
+                    raise InvalidCaptcha(500002, 'You have typed an incorrect captcha')
                 elif captcha.input == 'another':
                     continue
                 else:
@@ -203,11 +146,11 @@ class User:
         elif status == '50000':
             raise DangerousEnvironment(50000, message)
         elif status == '400010' or status == '230048':
-            # 400010 unexisting user
-            # 230048 just invalid because of the format
+            # 400010 用户不存在
+            # 230048 用户名格式错误
             raise InvalidUsername(int(status), message)
         elif status == '400101':
-            raise LoginFailure(400101, 'Email authentication is needed. Use BDUSS instead.')
+            raise LoginFailure(400101, 'Email auth required. Use BDUSS instead.')
         else:
             raise LoginFailure(status, message)
 
@@ -222,7 +165,7 @@ class User:
             'Referer': 'http://tieba.baidu.com'
         }
         r = requests.get('http://tieba.baidu.com/dc/common/tbs',
-                         headers=headers, cookies={'BDUSS': self.bduss}, timeout=timeout)
+                         headers=headers, cookies={'BDUSS': self.bduss}, timeout=TIMEOUT)
 
         is_valid = bool(r.json()['is_login'])
         self._validation = is_valid
@@ -238,7 +181,7 @@ class User:
                                                     '34455D4DED02169F3F7C7%7C132773740707453/1',
                                       'Referer': 'http://tieba.baidu.com/'},
                              cookies={'BDUSS': self.bduss},
-                             timeout=timeout)
+                             timeout=TIMEOUT)
 
         is_valid = bool(tbs_r.json()['is_login'])
         self._validation = is_valid
@@ -253,27 +196,25 @@ class User:
         if parser is None:
             raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
 
-        if self._validation is False:
+        if not self._validation:
             raise InvalidBDUSSException()
-        elif self._validation is None:
-            if not self.validation:
-                raise InvalidBDUSSException()
 
+        self._bars  # 在这里初始化比较好 (｀・ω・´)
         page = 1
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),
                              headers={'Content-Type': 'application/x-www-form-urlencoded'},
                              cookies={'BDUSS': self.bduss},
-                             timeout=timeout)
+                             timeout=TIMEOUT)
 
             r.encoding = 'gbk'
 
             soup = BeautifulSoup(r.text, parser)
-            rows = soup.find_all('tr')[1:]  # find all rows except the table header
+            rows = soup.find_all('tr')[1:]  # 获取除表头外所有行
 
             for row in rows:
-                kw = row.td.a.get_text()  # bar name
-                fid = int(row.find_all('td')[3].span['balvid'])  # a bar's fid used for signing
+                kw = row.td.a.get_text()  # 吧名
+                fid = int(row.find_all('td')[3].span['balvid'])  # 签到时需要的 fid
 
                 self._bars.append(Bar(kw, fid))
 
@@ -305,7 +246,7 @@ class Bar:
     @cached_property
     def fid(self):
         if self._fid is None:
-            r = requests.get('http://tieba.baidu.com/f/like/level?kw={}'.format(self.kw), timeout=timeout)
+            r = requests.get('http://tieba.baidu.com/f/like/level?kw={}'.format(self.kw), timeout=TIMEOUT)
             return fid_pattern.search(r.text).group()
         else:
             return self._fid
@@ -316,6 +257,9 @@ class Bar:
             raise InvalidBDUSSException()
 
         # BY KK!!!! https://ikk.me
+        # BY KK!!!! https://ikk.me
+        # BY KK!!!! https://ikk.me
+        # (=・ω・=)
         post_data = OrderedDict()
         post_data['BDUSS'] = user.bduss
         post_data['_client_id'] = '03-00-DA-59-05-00-72-96-06-00-01-00-04-00-4C-43-01-00-34-F4-02-00-BC-25-09-00-4E-36'
@@ -346,7 +290,7 @@ class Bar:
                                                  'AppleWebKit/525 (KHTML, like Gecko) Version/3.0 BrowserNG/7.1.16352'},
                           cookies={'BDUSS': user.bduss},
                           data=post_data,
-                          timeout=timeout)
+                          timeout=TIMEOUT)
 
         json_r = r.json()
 
