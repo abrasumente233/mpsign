@@ -49,6 +49,6 @@ def rsa_encrypt(text, n, e):
     public_key = impl.construct((n, e))
 
     random_number = 2  # 随便填
-    result, shit = public_key.encrypt(encrypt_string(public_key, text), random_number)
+    result = public_key.encrypt(encrypt_string(public_key, text), random_number)[0]
 
     return dec2hex(result)
