@@ -22,7 +22,6 @@ Options:
   --delay=<second>      Delay for every single bar [default: 3].
 
 """
-import http.server
 import sys
 import threading
 from getpass import getpass
@@ -32,26 +31,20 @@ from docopt import docopt
 from tinydb import TinyDB, where
 
 from mpsign import __version__
-from mpsign.const import DATA_DIR
+from mpsign.const import DATA_DIR, PORT
+from mpsign.exceptions import UserNotFound, UserDuplicated
+from mpsign.util import SingleFileHTTPThread
 from mpsign.core import *
 
-db_path = DATA_DIR + path.sep + '.mpsigndb'
+db_path = DATA_DIR + path.sep + 'mpsign.json'
 db = TinyDB(db_path)
 user_table = db.table('users', cache_size=10)
 bar_table = db.table('bars')
 
 
-class UserDuplicated(Exception):
-    pass
-
-
-class UserNotFound(Exception):
-    pass
-
-
 class DatabaseUser:
     def __init__(self, name):
-        if not is_user_existed(name):
+        if not is_user_existent(name):
             raise UserNotFound()
         user_row = user_table.get(where('name') == name)
         self.eid = user_row.eid
@@ -60,26 +53,7 @@ class DatabaseUser:
         self.obj = User(user_row['bduss'])
 
 
-class CaptchaRequestHandler(http.server.SimpleHTTPRequestHandler):
-
-    def log_message(self, log_format, *args):
-        pass
-
-    def do_GET(self):
-        """Serve a GET request."""
-        captcha_file = open('{d}{sep}www{sep}captcha.gif'.format(d=DATA_DIR, sep=path.sep),
-                                 'rb')
-        self.send_response(200)
-        self.send_header("Content-type", 'image/gif')
-        fs = os.fstat(captcha_file.fileno())
-        self.send_header("Content-Length", str(fs[6]))
-        self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
-        self.end_headers()
-        self.copyfile(captcha_file, self.wfile)
-        captcha_file.close()
-
-
-def is_user_existed(name):
+def is_user_existent(name):
     field_existence = user_table.search(where('name').exists())
     if not field_existence:
         return False
@@ -89,7 +63,7 @@ def is_user_existed(name):
 
 
 def check_user_duplicated(name):
-    if is_user_existed(name):
+    if is_user_existent(name):
         raise UserDuplicated()
 
 
@@ -102,7 +76,7 @@ def make_sure(message, default):
         decision = input(message).strip()
         if decision == '':
             return default
-        elif decision.lower() in ['y', 'yes', 'ok', 'yea']:
+        elif decision.lower() in ['y', 'yes', 'ok']:
             return True
         elif decision.lower() in ['n', 'no', 'nope']:
             return False
@@ -244,33 +218,17 @@ def xdgopen(captcha):
         return get_captcha()
 
 
-class HTTPThread(threading.Thread):
-    def __init__(self, port, captcha):
-        super().__init__()
-        self.captcha = captcha
-        self.port = port
-        self.httpd = None
-
-    def run(self):
-        print('Running http server at 127.0.0.1:{0}'.format(self.port))
-        self.httpd = http.server.HTTPServer(('', self.port), CaptchaRequestHandler)
-        self.httpd.serve_forever()
-
-
 def via_http(captcha):
-    try:
-        os.mkdir('{d}{sep}www'.format(d=DATA_DIR, sep=path.sep))
-    except Exception:
-        pass
+    captcha_path = '{d}{s}captcha.gif'.format(d=DATA_DIR, s=path.sep)
+    captcha.as_file(captcha_path)
 
-    captcha.as_file('{d}{sep}www{sep}captcha.gif'.format(d=DATA_DIR, sep=path.sep))
-
-    t = HTTPThread(8823, captcha)
+    t = SingleFileHTTPThread(PORT, captcha_path)
+    print('Running http server at 127.0.0.1:{0}'.format(PORT))
     t.start()
 
     user_input = get_captcha()
 
-    print('Shutting down the http server, please wait...')
+    print('Shutting down the http server, sometimes it may take a while...')
     t.httpd.server_close()
     t.httpd.shutdown()
     print('Finished shutting down the httpd.')
@@ -330,13 +288,13 @@ def login(username, password, need_update=True):
             break
 
         except InvalidPassword:
-            print('You have entered the wrong password. Please try again.')
+            print('You have typed an incorrect password.')
             password = getpass()
         except InvalidUsername:
-            print('You have entered the wrong username. Please try again.')
+            print('You have typed an incorrect username.')
             break
         except InvalidCaptcha:
-            print('You have got the captcha wrong. Please try again')
+            print('You have typed an incorrect captcha.')
             continue
         except LoginFailure as e:
             print('Unknown exception.\nerror code:{0}\nmessage: {1}'.format(e.code, e.message))
@@ -405,10 +363,11 @@ def cmd():
     except ImportError as e:
         # lxml or html5lib not found
         print(e.msg)
-        print('Please try again by using `mpsign update [user]`')
+        print('After installing one of them, please try again by using `mpsign update [user]`')
     except UserNotFound as e:
         print('User not found.')
-    except InvalidBDUSSException:
+    except InvalidBDUSSException as e:
+        raise e
         print('BDUSS not valid')
     except KeyboardInterrupt:
         print('Operation cancelled by user.')

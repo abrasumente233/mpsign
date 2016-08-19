@@ -1,3 +1,6 @@
+
+# Core
+
 class InvalidBDUSSException(Exception):
     pass
 
@@ -26,3 +29,16 @@ class InvalidUsername(LoginFailure):
 
 class DangerousEnvironment(LoginFailure):
     pass
+
+# Core
+
+# Command line
+
+class UserDuplicated(Exception):
+    pass
+
+
+class UserNotFound(Exception):
+    pass
+
+# Command line

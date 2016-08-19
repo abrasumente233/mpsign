@@ -23,7 +23,7 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下(很快就不在了)�
         >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 *.baidu.com 域下的 Cookies 找到
         ```
 
-    * 通过账号密码 (这段代码我都没眼看...)
+    * 通过账号密码 (这个暂时用不了了)
 
         ```python
         from mpsign.core import User, Captcha, LoginFailure
@@ -101,7 +101,7 @@ MPSIGN 自带一个命令行工具！配合 Cron 食用效！果！更！佳！(
 ### 我不想看用法！
 
 ```bash
-$ mpsign login 用户名 密码
+$ mpsign login 用户名
 ...按步骤走(･∀･)
 $ mpsign sign
 ...

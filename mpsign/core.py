@@ -196,10 +196,10 @@ class User:
         if parser is None:
             raise ImportError('Please install a parser for BeautifulSoup! either lxml or html5lib.')
 
-        if not self._validation:
+        if not self.validation:
             raise InvalidBDUSSException()
 
-        self._bars  # 在这里初始化比较好 (｀・ω・´)
+        self._bars = []  # 在这里初始化比较好 (｀・ω・´)
         page = 1
         while True:
             r = requests.get('http://tieba.baidu.com/f/like/mylike?&pn={}'.format(page),

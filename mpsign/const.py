@@ -1,5 +1,6 @@
 import os
 
+PORT = 8823
 TIMEOUT = 5
 
 DATA_DIR = os.path.expanduser('~{s}.config{s}mpsign'.format(s=os.sep))
