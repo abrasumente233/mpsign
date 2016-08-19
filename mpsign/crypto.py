@@ -19,7 +19,7 @@ def encrypt_string(key, string):
     n_in_hex = dec2hex(key.n)
 
     # TODO: 这条语句的意思待解
-    # 好吧后面是无效的 qwq
+    # else 后面通不过测试
     chunk_size = int((len(n_in_hex) / 2)) - 2 if len(n_in_hex) % 4 is 0 else \
         int(len(n_in_hex) / 2) + 1 - 2
 
