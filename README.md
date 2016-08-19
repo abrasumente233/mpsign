@@ -12,23 +12,29 @@ $ sudo pip install mpsign
 ## API
 
 
-MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示例。
+MPSIGN 的所有核心功能均在 `mpsign.core` 模块下(很快就不在了)。以下是一些示例。
 
 * 登录
 
-    * 通过账号密码
+    * 通过 BDUSS
+
+        ```python
+        >>> from mpsign.core import User
+        >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 *.baidu.com 域下的 Cookies 找到
+        ```
+
+    * 通过账号密码 (这段代码我都没眼看...)
 
         ```python
         from mpsign.core import User, Captcha, LoginFailure
 
-        user_gen = User.login('USERNAME', 'PASSWORD')  # 登陆的接口是用 generator 实现的
+        get_my_user = User.login('USERNAME', 'PASSWORD')  # 登陆的接口是用 generator 实现的
 
         try:
-            result = user_gen.send(None)  # 启动 generator
+            result = get_my_user.send(None)  # 启动 generator
             if isinstance(result, Captcha):  # 是否需要验证码
                 result.as_file('captcha.gif')  # 验证码图片保存到 captcha.gif
-                your_input = input('captcha: ')  # 获取用户输入
-                user = user_gen.send(your_input)  # 发送验证码给 generator
+                user = get_my_user.send(input('captcha: '))  # 发送验证码给 generator
             else:
                 user = result  # 不需要验证码的话，result 即是新建的 User 实例
         except LoginFailure as ex:
@@ -44,13 +50,6 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
         user_gen.send(None)
         ```
 
-    * 通过 BDUSS
-
-        ```python
-        >>> from mpsign.core import User
-        >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 baidu.com 域下的 Cookies 找到
-	    ```
-
 * 获取喜欢的吧
 
 	```python
@@ -61,28 +60,26 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 
 	```python
 	>>> from mpsign.core import User, Bar
-	>>> user = ...get User instance
+	>>> user = ...获取 User 实例
 	>>> bar = Bar(kw='python')
 	>>> bar.sign(user)
-	SignResult(message='ok', exp=8, bar=<mpsign.core.Bar object at 0x7f7648d35e48>, code=0, total_sign='41', rank='3249', cont_sign='4')
+	SignResult(message='ok', exp=8, bar=<Bar: python>, code=0, total_sign='41', rank='3249', cont_sign='4')
 	```
 	注: `user.sign(bar)` 与 `bar.sign(user)` 等价。
 	```python
 	>>> [user.sign(bar) for bar in user.bars]
 	...a list of SignResult
 	```
-	注: 签到需要四样东西：BDUSS，tbs，吧名和**对应贴吧的 fid**. `mpsign.core.Bar` 有两种实例化的方法: Bar(kw, fid) 或 Bar(kw).
-	    如果使用后者，访问 `bar.fid` 的时候会去单独获取该贴吧的 fid，贴吧多了之后流量消耗相当可观. 所以除非真的不知道 fid，
-	    否则请使用第一种构造方法。有一种批量获取用户喜欢的吧 fid 的方法是使用 `user.bars`，返回的是一个由前者构造成的 Bar 的 tuple.
+	注: 签到需要贴吧的 fid。最好不要用 Bar(kw) 这个构造方法，会单独获取 fid。请权衡用 `user.bars` 批量获取和单独获取的利弊再用
 
-* 检验 BDUSS 是否合法
+* BDUSS 吼不吼啊？
 
 	```python
 	>>> from mpsign.core import User
-	>>> User('AN INVALID BDUSS').validation
+	>>> User('已过期或滚键盘出来的 BDUSS').validation
 	False
 	```
-* TBS
+* tbs
 
 	```python
 	>>> user.tbs
@@ -99,15 +96,24 @@ MPSIGN 的所有核心功能均在 `mpsign.core` 模块下。以下是一些示�
 ## 命令行工具
 
 
-MPSIGN 提供一个现成的命令行工具，自带一个轻量的用户管理系统。所有的用户信息都会被储存在 `~/.mpsign/.mpsigndb` 之下。你可以配合 Linux Crontab 与此工具快速设置一个全自动的签到系统。
+MPSIGN 自带一个命令行工具！配合 Cron 食用效！果！更！佳！(〜￣△￣)〜
 
-### 基本用法
+### 我不想看用法！
+
+```bash
+$ mpsign login 用户名 密码
+...按步骤走(･∀･)
+$ mpsign sign
+...
+```
+
+### 用法
 
 ```bash
 $ mpsign --help
 Usage:
-  mpsign login <username>
-  mpsign (new|set) <user> <bduss> [--without-verifying]
+  mpsign login <username> [--dont-update]
+  mpsign (new|set) <user> <bduss> [--without-verifying] [--dont-update]
   mpsign (delete|update) [<user>]
   mpsign sign [<user>] [--delay=<second>]
   mpsign info [<user>]
@@ -118,6 +124,7 @@ Options:
   -h --help             Show this screen.
   -v --version          Show version.
   --without-verifying   Do not verify BDUSS.
+  --dont-update         Do not update your favorite bars after binding user
   --bduss               Your Baidu BDUSS.
   --username            Your Baidu ID
   --user                Your mpsign ID.
