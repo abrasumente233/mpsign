@@ -3,6 +3,7 @@ import os
 import time
 import re
 import hashlib
+import json
 from collections import OrderedDict, namedtuple
 
 import requests
@@ -93,23 +94,25 @@ class User:
 
         timestamp = str(int(time.time())) # 当前时间 精确到秒
 
+        server_time = s.get('http://wappass.baidu.com/wp/api/security/antireplaytoken?tpl=wimn&v={time}'.format(time=timestamp)).json()['time']
+
         payload = {
             'loginmerge': '1',
-            'servertime': timestamp,
+            'servertime': server_time,
             'username': username,
-            'password': rsa_encrypt(password + timestamp,
+            'password': rsa_encrypt(password + server_time,
                                     RSA_MODULUS, RSA_PUB_KEY),
-            'gid': '8578373-26F9-4B83-92EB-CC2BA36C7183'  # 随便取
+            'gid': 'ED9E656-A818-402B-9E18-7D4349C9E86F'  # 随便取
         }
 
-        r = s.post('http://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
+        r = s.post('https://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
                    data=payload)
 
         # 是否需要验证码
         vcodestr = r.json()['data']['codeString']
         if vcodestr:
             while True:
-                r_captcha = s.get('http://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
+                r_captcha = s.get('https://wappass.baidu.com/cgi-bin/genimage?{0}&v={1}'.format(vcodestr, timestamp),
                                   stream=True)
 
                 captcha = Captcha(r_captcha.raw)
@@ -127,10 +130,15 @@ class User:
                 else:
                     break
 
-            payload['vcodestr'] = vcodestr
-            payload['verifycode'] = user_input
+            timestamp = str(int(time.time())) # 重新获取时间
+            server_time = s.get('http://wappass.baidu.com/wp/api/security/antireplaytoken?tpl=wimn&v={time}'.format(time=timestamp)).json()['time']
 
-            r = s.post('http://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
+            payload['vcodestr'] = vcodestr
+            payload['servertime'] = server_time
+            payload['verifycode'] = user_input
+            payload['password'] = rsa_encrypt(password + server_time, RSA_MODULUS, RSA_PUB_KEY)  # 因为密文跟时间捆绑，需一起重新获取
+
+            r = s.post('https://wappass.baidu.com/wp/api/login?tt={}'.format(timestamp),
                        data=payload)
 
         data = r.json()

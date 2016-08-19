@@ -25,7 +25,7 @@ MPSIGN 的所有核心功能均在 ``mpsign.core``
           >>> from mpsign.core import User
           >>> user = User('YOUR BDUSS')  # 此处的 BDUSS 可从 *.baidu.com 域下的 Cookies 找到
 
-   -  通过账号密码 (这个暂时用不了了)
+   -  通过账号密码 (复活！！)
 
       .. code:: python
 
